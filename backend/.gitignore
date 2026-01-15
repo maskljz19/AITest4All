@@ -1,8 +1,12 @@
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# C extensions
 *.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -19,21 +23,28 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
 venv/
 ENV/
 env/
 .venv
-
-# Node
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-dist/
-dist-ssr/
-*.local
 
 # IDEs
 .vscode/
@@ -41,10 +52,8 @@ dist-ssr/
 *.swp
 *.swo
 *~
-.DS_Store
-Thumbs.db
 
-# Environment
+# Environment variables
 .env
 .env.local
 .env.production
@@ -62,8 +71,6 @@ logs/
 uploads/
 knowledge_base/
 
-# Test coverage
-htmlcov/
-.coverage
-.coverage.*
-.pytest_cache/
+# OS
+.DS_Store
+Thumbs.db
