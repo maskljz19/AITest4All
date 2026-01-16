@@ -17,6 +17,7 @@ from fastapi import UploadFile
 from app.models.knowledge_base import KnowledgeBase
 from app.services.document_parser import DocumentParser, DocumentParseError
 from app.core.config import settings
+from app.core.cache import cache_response, invalidate_cache_pattern
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +106,9 @@ class KnowledgeBaseService:
             await self.db.commit()
             await self.db.refresh(kb)
             
+            # Invalidate search cache
+            await invalidate_cache_pattern("kb:search:*")
+            
             logger.info(f"Uploaded document: {kb.name} (ID: {kb.id})")
             return kb
             
@@ -155,6 +159,9 @@ class KnowledgeBaseService:
             await self.db.commit()
             await self.db.refresh(kb)
             
+            # Invalidate search cache
+            await invalidate_cache_pattern("kb:search:*")
+            
             logger.info(f"Added URL: {kb.name} (ID: {kb.id})")
             return kb
             
@@ -163,6 +170,7 @@ class KnowledgeBaseService:
             logger.error(f"Failed to add URL: {str(e)}")
             raise KnowledgeBaseError(f"Failed to add URL: {str(e)}")
     
+    @cache_response("kb:search", ttl=1800)  # Cache for 30 minutes
     async def search(
         self,
         query: str,
@@ -314,6 +322,9 @@ class KnowledgeBaseService:
         
         await self.db.delete(kb)
         await self.db.commit()
+        
+        # Invalidate search cache
+        await invalidate_cache_pattern("kb:search:*")
         
         logger.info(f"Deleted knowledge base entry: {kb.name} (ID: {kb_id})")
         return True

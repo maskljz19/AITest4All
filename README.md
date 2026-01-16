@@ -1,24 +1,62 @@
 # AI测试用例生成系统
 
-AI驱动的智能测试用例生成系统,通过多个专业Agent协作,实现从需求分析到用例生成、代码生成、质量优化的全流程自动化。
+> 基于AI的智能测试用例生成平台，通过多Agent协作实现从需求分析到用例生成、代码生成、质量优化的全流程自动化
 
-## 项目概述
+## 📋 项目简介
 
-本系统采用多Agent协作架构,包含5个专业Agent:
-- **需求分析Agent**: 解析需求文档,提取测试关键信息
-- **场景生成Agent**: 根据需求生成全面的测试场景
-- **用例生成Agent**: 为每个场景生成详细测试用例
-- **代码生成Agent**: 根据用例生成自动化测试代码
-- **质量优化Agent**: 分析用例质量并提出改进建议
+AI测试用例生成系统是一个创新的测试自动化工具，利用大语言模型(LLM)的强大能力，帮助测试工程师快速生成高质量的测试用例。系统采用多Agent协作架构，包含需求分析、场景生成、用例生成、代码生成和质量优化五个专业Agent，实现测试用例设计的智能化和标准化。
 
-## 技术栈
+### 核心特性
+
+- **🤖 多Agent协作**: 5个专业Agent分工协作，各司其职
+- **🎯 全流程覆盖**: 需求分析 → 场景设计 → 用例生成 → 代码生成 → 质量优化
+- **🔧 高度可定制**: 支持自定义提示词、模型配置和生成流程
+- **📚 知识库增强**: 历史用例、缺陷库、业务规则辅助生成
+- **💬 交互式优化**: 支持多轮对话，逐步优化用例质量
+- **📤 多格式导出**: 支持Excel、Word、JSON、Markdown等多种格式
+- **⚡ 轻量部署**: 适配4核4G40G服务器，支持本地知识库
+
+### 适用场景
+
+- **UI测试**: Web应用界面测试用例生成
+- **接口测试**: RESTful API测试用例生成
+- **白盒测试**: 单元测试用例生成
+- **性能测试**: 性能测试场景设计
+- **安全测试**: 安全测试用例生成
+
+## 🏗️ 系统架构
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   前端交互层                         │
+│  用例生成向导 | Agent配置 | 知识库管理 | 脚本管理   │
+└────────────────────┬────────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────┐
+│                 AI Agent编排层                       │
+│  需求分析 | 场景生成 | 用例生成 | 代码生成 | 质量优化│
+└────────────────────┬────────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────┐
+│                  LLM服务层                           │
+│  OpenAI API | Anthropic API | 本地模型              │
+└────────────────────┬────────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────┐
+│                 数据与知识层                         │
+│  知识库 | 脚本库 | 模板库 | PostgreSQL | Redis      │
+└─────────────────────────────────────────────────────┘
+```
+
+## 💻 技术栈
 
 ### 后端
 - **框架**: FastAPI 0.104+
-- **数据库**: PostgreSQL 14+ (全文搜索)
+- **数据库**: PostgreSQL 14+
 - **缓存**: Redis 6+
 - **ORM**: SQLAlchemy 2.0 (Async)
 - **LLM**: OpenAI API / Anthropic API
+- **向量数据库**: Chroma (知识库检索)
 
 ### 前端
 - **框架**: React 18 + TypeScript
@@ -28,43 +66,7 @@ AI驱动的智能测试用例生成系统,通过多个专业Agent协作,实现�
 - **代码编辑器**: Monaco Editor
 - **图表**: ECharts
 
-## 项目结构
-
-```
-.
-├── backend/                 # 后端服务
-│   ├── app/
-│   │   ├── main.py         # FastAPI应用入口
-│   │   ├── core/           # 核心配置
-│   │   ├── models/         # 数据库模型
-│   │   ├── schemas/        # Pydantic模型
-│   │   ├── api/            # API路由
-│   │   ├── services/       # 业务逻辑
-│   │   └── agents/         # AI Agents
-│   ├── alembic/            # 数据库迁移
-│   ├── tests/              # 测试文件
-│   └── requirements.txt    # Python依赖
-│
-├── frontend/               # 前端应用
-│   ├── src/
-│   │   ├── main.tsx       # 应用入口
-│   │   ├── App.tsx        # 根组件
-│   │   ├── api/           # API客户端
-│   │   ├── components/    # 通用组件
-│   │   ├── pages/         # 页面组件
-│   │   ├── stores/        # 状态管理
-│   │   └── utils/         # 工具函数
-│   └── package.json       # 前端依赖
-│
-└── .kiro/                 # Kiro规范文档
-    └── specs/
-        └── ai-test-case-generator/
-            ├── requirements.md  # 需求文档
-            ├── design.md       # 设计文档
-            └── tasks.md        # 任务列表
-```
-
-## 快速开始
+## 🚀 快速开始
 
 ### 环境要求
 
@@ -72,23 +74,26 @@ AI驱动的智能测试用例生成系统,通过多个专业Agent协作,实现�
 - Node.js 18+
 - PostgreSQL 14+
 - Redis 6+
+- OpenAI API Key 或 Anthropic API Key
 
-### 后端启动
+### 后端部署
 
 ```bash
+# 进入后端目录
 cd backend
 
 # 创建虚拟环境
 python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
+
+# 激活虚拟环境 (Windows)
+venv\Scripts\activate
 
 # 安装依赖
 pip install -r requirements.txt
 
 # 配置环境变量
 copy .env.example .env
-# 编辑.env文件,配置数据库、Redis和LLM API密钥
+# 编辑 .env 文件，配置数据库、Redis和LLM API密钥
 
 # 初始化数据库
 alembic upgrade head
@@ -99,9 +104,10 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 访问 http://localhost:8000/docs 查看API文档
 
-### 前端启动
+### 前端部署
 
 ```bash
+# 进入前端目录
 cd frontend
 
 # 安装依赖
@@ -116,12 +122,33 @@ npm run dev
 
 访问 http://localhost:5173
 
-## 核心功能
+### Docker部署
+
+```bash
+# 使用Docker Compose一键部署
+docker-compose up -d
+
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f
+```
+
+## 📖 文档导航
+
+- [用户指南](./用户指南.md) - 系统使用说明和操作指南
+- [开发者文档](./开发者文档.md) - 开发环境搭建和代码结构说明
+- [接口文档](./接口文档.md) - API接口详细说明
+- [部署运维文档](./部署运维文档.md) - 生产环境部署和运维指南
+- [工具使用文档](./工具使用文档.md) - 知识库、脚本、模板等工具使用说明
+
+## 🎯 核心功能
 
 ### 1. 需求分析
 - 支持Word、PDF、Markdown、URL等多种输入方式
 - 自动提取功能点、业务规则、数据模型、接口定义
-- 知识库辅助分析,参考历史需求
+- 知识库辅助分析，参考历史需求
 
 ### 2. 场景生成
 - 根据测试类型(UI/接口/白盒)生成对应场景
@@ -154,63 +181,104 @@ npm run dev
 - 沙箱环境安全执行
 - 预置常用数据生成脚本
 
-## 开发指南
+## 🔧 配置说明
 
-### 后端开发
+### 环境变量配置
 
-```bash
-# 运行测试
-pytest
-
-# 生成覆盖率报告
-pytest --cov=app --cov-report=html
-
-# 创建数据库迁移
-alembic revision --autogenerate -m "description"
-
-# 应用迁移
-alembic upgrade head
-```
-
-### 前端开发
+主要环境变量说明：
 
 ```bash
-# 运行ESLint检查
-npm run lint
+# 数据库配置
+DATABASE_URL=postgresql://user:password@localhost:5432/ai_test_case_generator
+REDIS_URL=redis://localhost:6379/0
 
-# 构建生产版本
-npm run build
+# LLM配置
+OPENAI_API_KEY=your_openai_api_key
+ANTHROPIC_API_KEY=your_anthropic_api_key
+DEFAULT_MODEL_PROVIDER=openai
+DEFAULT_MODEL_NAME=gpt-4
 
-# 预览生产版本
-npm run preview
+# 应用配置
+APP_ENV=development
+APP_HOST=0.0.0.0
+APP_PORT=8000
+SESSION_EXPIRE_HOURS=24
+MAX_UPLOAD_SIZE_MB=10
 ```
 
-## 部署
+详细配置说明请参考 [开发者文档](./开发者文档.md)
 
-### 服务器要求
-- CPU: 4核
-- 内存: 4GB
-- 磁盘: 40GB
-- 操作系统: Ubuntu 20.04 / CentOS 7+
+## 📊 项目结构
 
-详细部署步骤请参考 [backend/README.md](backend/README.md) 和 [frontend/README.md](frontend/README.md)
+```
+.
+├── backend/                 # 后端服务
+│   ├── app/
+│   │   ├── main.py         # FastAPI应用入口
+│   │   ├── core/           # 核心配置
+│   │   ├── models/         # 数据库模型
+│   │   ├── schemas/        # Pydantic模型
+│   │   ├── api/            # API路由
+│   │   ├── services/       # 业务逻辑
+│   │   ├── agents/         # AI Agents
+│   │   ├── tools/          # 工具模块
+│   │   └── mcp/            # MCP服务器
+│   ├── alembic/            # 数据库迁移
+│   ├── tests/              # 测试文件
+│   └── requirements.txt    # Python依赖
+│
+├── frontend/               # 前端应用
+│   ├── src/
+│   │   ├── main.tsx       # 应用入口
+│   │   ├── App.tsx        # 根组件
+│   │   ├── api/           # API客户端
+│   │   ├── components/    # 通用组件
+│   │   ├── pages/         # 页面组件
+│   │   ├── stores/        # 状态管理
+│   │   └── utils/         # 工具函数
+│   └── package.json       # 前端依赖
+│
+├── deployment/             # 部署配置
+│   ├── nginx/             # Nginx配置
+│   ├── supervisor/        # Supervisor配置
+│   ├── systemd/           # Systemd配置
+│   └── scripts/           # 部署脚本
+│
+├── agent_prompts/          # Agent提示词
+├── docker-compose.yml      # Docker编排
+└── README.md              # 项目说明
+```
 
-## 文档
+## 🤝 贡献指南
 
-- [需求文档](.kiro/specs/ai-test-case-generator/requirements.md)
-- [设计文档](.kiro/specs/ai-test-case-generator/design.md)
-- [任务列表](.kiro/specs/ai-test-case-generator/tasks.md)
-- [后端文档](backend/README.md)
-- [前端文档](frontend/README.md)
+欢迎提交Issue和Pull Request！
 
-## 许可证
+### 开发流程
 
-MIT
+1. Fork本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 提交Pull Request
 
-## 贡献
+### 代码规范
 
-欢迎提交Issue和Pull Request!
+- Python代码遵循PEP 8规范
+- TypeScript代码遵循ESLint配置
+- 提交信息遵循Conventional Commits规范
 
-## 联系方式
+## 📝 许可证
 
-如有问题,请提交Issue或联系项目维护者。
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+
+## 📧 联系方式
+
+如有问题或建议，请提交Issue或联系项目维护者。
+
+## 🙏 致谢
+
+感谢所有为本项目做出贡献的开发者！
+
+---
+
+**注意**: 本系统需要配置OpenAI或Anthropic的API密钥才能正常使用。请确保您已经获取相应的API密钥并正确配置。

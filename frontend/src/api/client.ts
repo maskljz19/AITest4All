@@ -1,9 +1,10 @@
 /**
  * API Client Configuration
  */
-import axios from 'axios'
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
+import { handleApiError } from '@/utils/errorHandler'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -15,15 +16,16 @@ export const apiClient = axios.create({
 
 // Request interceptor
 apiClient.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     // Add auth token if available
     const token = localStorage.getItem('token')
-    if (token) {
+    if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
-  (error) => {
+  (error: AxiosError) => {
+    console.error('Request error:', error)
     return Promise.reject(error)
   }
 )
@@ -33,13 +35,9 @@ apiClient.interceptors.response.use(
   (response) => {
     return response
   },
-  (error) => {
-    // Handle errors globally
-    if (error.response?.status === 401) {
-      // Handle unauthorized
-      localStorage.removeItem('token')
-      window.location.href = '/login'
-    }
+  (error: AxiosError) => {
+    // Use centralized error handler
+    handleApiError(error)
     return Promise.reject(error)
   }
 )

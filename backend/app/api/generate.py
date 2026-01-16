@@ -39,15 +39,19 @@ from app.services import (
     SessionError,
     KnowledgeBaseService,
 )
+from app.core.database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/generate", tags=["generate"])
 
 
 # Dependency to get services
-def get_session_manager() -> SessionManager:
+async def get_session_manager() -> SessionManager:
     """Get session manager instance"""
-    return SessionManager()
+    from app.core.redis_client import get_redis
+    redis = await get_redis()
+    return SessionManager(redis)
 
 
 def get_document_parser() -> DocumentParser:
@@ -55,9 +59,9 @@ def get_document_parser() -> DocumentParser:
     return DocumentParser()
 
 
-def get_knowledge_base_service() -> KnowledgeBaseService:
+async def get_knowledge_base_service(db: AsyncSession = Depends(get_db)) -> KnowledgeBaseService:
     """Get knowledge base service instance"""
-    return KnowledgeBaseService()
+    return KnowledgeBaseService(db)
 
 
 @router.post(
@@ -225,8 +229,8 @@ async def generate_scenarios(
     """
     try:
         # Verify session exists
-        session_data = await session_manager.get_session_metadata(request.session_id)
-        if not session_data:
+        metadata = await session_manager.get_metadata(request.session_id)
+        if not metadata:
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -313,8 +317,8 @@ async def generate_cases(
     """
     try:
         # Verify session exists
-        session_data = await session_manager.get_session_metadata(request.session_id)
-        if not session_data:
+        metadata = await session_manager.get_metadata(request.session_id)
+        if not metadata:
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -386,8 +390,8 @@ async def generate_code(
     """
     try:
         # Verify session exists
-        session_data = await session_manager.get_session_metadata(request.session_id)
-        if not session_data:
+        metadata = await session_manager.get_metadata(request.session_id)
+        if not metadata:
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -460,8 +464,8 @@ async def analyze_quality(
     """
     try:
         # Verify session exists
-        session_data = await session_manager.get_session_metadata(request.session_id)
-        if not session_data:
+        metadata = await session_manager.get_metadata(request.session_id)
+        if not metadata:
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -549,8 +553,8 @@ async def optimize_cases(
     """
     try:
         # Verify session exists
-        session_data = await session_manager.get_session_metadata(request.session_id)
-        if not session_data:
+        metadata = await session_manager.get_metadata(request.session_id)
+        if not metadata:
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -627,8 +631,8 @@ async def supplement_cases(
     """
     try:
         # Verify session exists
-        session_data = await session_manager.get_session_metadata(request.session_id)
-        if not session_data:
+        metadata = await session_manager.get_metadata(request.session_id)
+        if not metadata:
             raise HTTPException(
                 status_code=400,
                 detail={

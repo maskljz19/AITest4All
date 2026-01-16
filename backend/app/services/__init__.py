@@ -11,6 +11,7 @@ from app.services.script_executor import (
 )
 from app.services.knowledge_base import KnowledgeBaseService, KnowledgeBaseError
 from app.services.session_manager import SessionManager, SessionError
+from app.services.prompt_manager import PromptManager, prompt_manager
 
 __all__ = [
     'DocumentParser',
@@ -22,4 +23,6 @@ __all__ = [
     'KnowledgeBaseError',
     'SessionManager',
     'SessionError',
+    'PromptManager',
+    'prompt_manager',
 ]

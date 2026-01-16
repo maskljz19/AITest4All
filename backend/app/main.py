@@ -2,12 +2,21 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.core.database import init_db, close_db
 from app.core.redis_client import init_redis, close_redis
-from app.api import generate_router, websocket_router
+from app.core.exceptions import AppException
+from app.core.error_handlers import (
+    app_exception_handler,
+    http_exception_handler,
+    validation_exception_handler,
+    general_exception_handler
+)
+from app.api import generate_router, websocket_router, prompts_router, model_config_router, feedback_router
 from app.api.knowledge_base import router as knowledge_base_router
 from app.api.scripts import router as scripts_router
 from app.api.agent_configs import router as agent_configs_router
@@ -34,10 +43,16 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware
+# Register exception handlers
+app.add_exception_handler(AppException, app_exception_handler)
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, general_exception_handler)
+
+# CORS middleware - configurable via environment variable
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=settings.get_cors_origins_list(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -51,6 +66,9 @@ app.include_router(scripts_router)
 app.include_router(agent_configs_router)
 app.include_router(templates_router)
 app.include_router(export_router)
+app.include_router(prompts_router)
+app.include_router(model_config_router)
+app.include_router(feedback_router)
 
 
 @app.get("/")

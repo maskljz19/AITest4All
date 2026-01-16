@@ -1,0 +1,42 @@
+# Systemd service file for Celery Worker (if using Celery for async tasks)
+# Place this file in /etc/systemd/system/
+# Note: This is optional and only needed if you implement Celery for background tasks
+
+[Unit]
+Description=AI Test Case Generator Celery Worker
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=forking
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/ai-test-case-generator/backend
+Environment="PATH=/var/www/ai-test-case-generator/backend/venv/bin"
+EnvironmentFile=/var/www/ai-test-case-generator/backend/.env
+
+# Start command
+ExecStart=/var/www/ai-test-case-generator/backend/venv/bin/celery -A app.celery worker \
+    --loglevel=info \
+    --concurrency=4 \
+    --pidfile=/var/run/celery/worker.pid \
+    --logfile=/var/log/celery/worker.log
+
+# Stop command
+ExecStop=/bin/kill -s TERM $MAINPID
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Create PID directory
+RuntimeDirectory=celery
+RuntimeDirectoryMode=0755
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ai-test-case-celery
+
+[Install]
+WantedBy=multi-user.target

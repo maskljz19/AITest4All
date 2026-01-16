@@ -36,6 +36,8 @@ class SessionManager:
     STEP_CODE = "code"
     STEP_QUALITY_REPORT = "quality_report"
     STEP_CONVERSATION = "conversation"
+    STEP_USER_MODIFICATIONS = "user_modifications"
+    STEP_AGENT_DECISIONS = "agent_decisions"
     
     def __init__(self, redis_client: redis.Redis):
         self.redis = redis_client
@@ -395,3 +397,121 @@ class SessionManager:
             messages = messages[-limit:]
         
         return messages
+    
+    async def record_user_modification(
+        self,
+        session_id: str,
+        step: str,
+        field: str,
+        old_value: Any,
+        new_value: Any
+    ) -> None:
+        """Record user modification
+        
+        Args:
+            session_id: Session ID
+            step: Step name (e.g., requirement_analysis, scenarios)
+            field: Field name that was modified
+            old_value: Original value
+            new_value: New value
+        """
+        modifications = await self.get_step_result(
+            session_id,
+            self.STEP_USER_MODIFICATIONS
+        ) or []
+        
+        modifications.append({
+            "step": step,
+            "field": field,
+            "old_value": old_value,
+            "new_value": new_value,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        await self.save_step_result(
+            session_id,
+            self.STEP_USER_MODIFICATIONS,
+            modifications
+        )
+        
+        logger.debug(f"Recorded user modification: {session_id}:{step}:{field}")
+    
+    async def get_user_modifications(
+        self,
+        session_id: str,
+        step: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Get user modification history
+        
+        Args:
+            session_id: Session ID
+            step: Optional filter by step name
+            
+        Returns:
+            List of user modifications
+        """
+        modifications = await self.get_step_result(
+            session_id,
+            self.STEP_USER_MODIFICATIONS
+        ) or []
+        
+        if step:
+            modifications = [m for m in modifications if m.get("step") == step]
+        
+        return modifications
+    
+    async def record_agent_decision(
+        self,
+        session_id: str,
+        agent_type: str,
+        decision: Dict[str, Any]
+    ) -> None:
+        """Record agent decision
+        
+        Args:
+            session_id: Session ID
+            agent_type: Agent type (requirement/scenario/case/code/quality)
+            decision: Decision details
+        """
+        decisions = await self.get_step_result(
+            session_id,
+            self.STEP_AGENT_DECISIONS
+        ) or []
+        
+        decisions.append({
+            "agent_type": agent_type,
+            "decision": decision,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        await self.save_step_result(
+            session_id,
+            self.STEP_AGENT_DECISIONS,
+            decisions
+        )
+        
+        logger.debug(f"Recorded agent decision: {session_id}:{agent_type}")
+    
+    async def get_agent_decisions(
+        self,
+        session_id: str,
+        agent_type: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Get agent decision history
+        
+        Args:
+            session_id: Session ID
+            agent_type: Optional filter by agent type
+            
+        Returns:
+            List of agent decisions
+        """
+        decisions = await self.get_step_result(
+            session_id,
+            self.STEP_AGENT_DECISIONS
+        ) or []
+        
+        if agent_type:
+            decisions = [d for d in decisions if d.get("agent_type") == agent_type]
+        
+        return decisions

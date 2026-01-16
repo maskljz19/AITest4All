@@ -86,7 +86,7 @@ class CheckpointVerifier:
             self.log_success("Redis连接正常")
             
             # Test session manager
-            session_manager = SessionManager()
+            session_manager = SessionManager(redis_client)
             session_id = await session_manager.create_session("test_user")
             self.log_success(f"创建会话成功: {session_id}")
             

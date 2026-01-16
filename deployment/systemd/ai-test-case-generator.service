@@ -1,0 +1,52 @@
+# Systemd service file for AI Test Case Generator Backend
+# Place this file in /etc/systemd/system/
+
+[Unit]
+Description=AI Test Case Generator Backend Service
+Documentation=https://github.com/your-repo/ai-test-case-generator
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/ai-test-case-generator/backend
+Environment="PATH=/var/www/ai-test-case-generator/backend/venv/bin"
+EnvironmentFile=/var/www/ai-test-case-generator/backend/.env
+
+# Start command
+ExecStart=/var/www/ai-test-case-generator/backend/venv/bin/uvicorn app.main:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --workers 4 \
+    --log-level info \
+    --access-log \
+    --use-colors
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=200
+StartLimitBurst=5
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/ai-test-case-generator/backend/uploads
+ReadWritePaths=/var/www/ai-test-case-generator/backend/knowledge_base
+ReadWritePaths=/var/www/ai-test-case-generator/backend/logs
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ai-test-case-generator
+
+[Install]
+WantedBy=multi-user.target

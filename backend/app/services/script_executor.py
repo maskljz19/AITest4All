@@ -9,8 +9,14 @@ import logging
 import subprocess
 import sys
 import tempfile
+import signal
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, Any
+
+# Import resource only on Unix systems
+if os.name != 'nt':
+    import resource
 
 from app.core.config import settings
 
@@ -29,6 +35,22 @@ class ScriptTimeoutError(ScriptExecutionError):
 
 class ScriptExecutor:
     """Service for executing Python scripts in a sandboxed environment"""
+    
+    # Dangerous modules that should be blocked
+    BLOCKED_MODULES = {
+        'os', 'subprocess', 'sys', 'shutil', 'pathlib',
+        'socket', 'urllib', 'requests', 'http',
+        'multiprocessing', 'threading', 'asyncio',
+        'importlib', '__import__', 'eval', 'exec',
+        'compile', 'open', 'file', 'input'
+    }
+    
+    # Allowed standard library modules
+    ALLOWED_MODULES = {
+        'random', 'string', 'datetime', 'time', 'json',
+        'math', 're', 'collections', 'itertools', 'functools',
+        'hashlib', 'base64', 'uuid'
+    }
     
     # Built-in scripts for common test data generation
     BUILTIN_SCRIPTS = {
@@ -140,6 +162,26 @@ print(generate_password())
     }
     
     @classmethod
+    def _set_resource_limits(cls):
+        """Set resource limits for the subprocess (Unix only)"""
+        if os.name != 'nt':  # Not Windows
+            try:
+                # Limit CPU time to 30 seconds
+                resource.setrlimit(resource.RLIMIT_CPU, (30, 30))
+                
+                # Limit memory to 256MB
+                resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))
+                
+                # Limit number of processes
+                resource.setrlimit(resource.RLIMIT_NPROC, (0, 0))
+                
+                # Limit file size to 1MB
+                resource.setrlimit(resource.RLIMIT_FSIZE, (1024 * 1024, 1024 * 1024))
+                
+            except Exception as e:
+                logger.warning(f"Failed to set resource limits: {str(e)}")
+    
+    @classmethod
     def execute(
         cls,
         script_code: str,
@@ -171,7 +213,7 @@ print(generate_password())
         
         # Validate script before execution
         if not cls.validate_script(script_code):
-            raise ScriptExecutionError("Script validation failed")
+            raise ScriptExecutionError("Script validation failed: contains dangerous operations or imports")
         
         try:
             # Create a temporary file for the script
@@ -185,16 +227,35 @@ print(generate_password())
                 temp_file_path = temp_file.name
             
             try:
-                # Execute the script in a subprocess
-                result = subprocess.run(
-                    [sys.executable, temp_file_path],
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout,
-                    input=input_data,
-                    # Security: limit resource usage
-                    env={'PYTHONPATH': ''},  # Isolate from system packages
-                )
+                # Prepare restricted environment
+                restricted_env = {
+                    'PYTHONPATH': '',  # Isolate from system packages
+                    'PYTHONDONTWRITEBYTECODE': '1',  # Don't create .pyc files
+                    'PYTHONHASHSEED': '0',  # Deterministic hashing
+                }
+                
+                # Execute the script in a subprocess with resource limits
+                if os.name == 'nt':  # Windows
+                    # Windows doesn't support preexec_fn, use basic timeout only
+                    result = subprocess.run(
+                        [sys.executable, '-I', temp_file_path],  # -I for isolated mode
+                        capture_output=True,
+                        text=True,
+                        timeout=timeout,
+                        input=input_data,
+                        env=restricted_env,
+                        creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
+                    )
+                else:  # Unix/Linux
+                    result = subprocess.run(
+                        [sys.executable, '-I', temp_file_path],  # -I for isolated mode
+                        capture_output=True,
+                        text=True,
+                        timeout=timeout,
+                        input=input_data,
+                        env=restricted_env,
+                        preexec_fn=cls._set_resource_limits  # Set resource limits
+                    )
                 
                 return {
                     'success': result.returncode == 0,
@@ -205,10 +266,18 @@ print(generate_password())
                 
             finally:
                 # Clean up temporary file
-                Path(temp_file_path).unlink(missing_ok=True)
+                try:
+                    Path(temp_file_path).unlink(missing_ok=True)
+                except Exception as e:
+                    logger.warning(f"Failed to delete temp file: {str(e)}")
                 
         except subprocess.TimeoutExpired:
             logger.error(f"Script execution timed out after {timeout} seconds")
+            # Force kill the process
+            try:
+                Path(temp_file_path).unlink(missing_ok=True)
+            except:
+                pass
             raise ScriptTimeoutError(f"Script execution timed out after {timeout} seconds")
         except Exception as e:
             logger.error(f"Script execution failed: {str(e)}")
@@ -216,17 +285,49 @@ print(generate_password())
     
     @classmethod
     def validate_script(cls, script_code: str) -> bool:
-        """Validate Python script syntax
+        """Validate Python script syntax and security
         
         Args:
             script_code: Python code to validate
             
         Returns:
-            True if script is valid, False otherwise
+            True if script is valid and safe, False otherwise
         """
         try:
-            ast.parse(script_code)
+            # Parse the script
+            tree = ast.parse(script_code)
+            
+            # Check for dangerous imports
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        module_name = alias.name.split('.')[0]
+                        if module_name in cls.BLOCKED_MODULES:
+                            logger.warning(f"Blocked dangerous import: {module_name}")
+                            return False
+                        if module_name not in cls.ALLOWED_MODULES:
+                            logger.warning(f"Import not in allowed list: {module_name}")
+                            return False
+                            
+                elif isinstance(node, ast.ImportFrom):
+                    if node.module:
+                        module_name = node.module.split('.')[0]
+                        if module_name in cls.BLOCKED_MODULES:
+                            logger.warning(f"Blocked dangerous import from: {module_name}")
+                            return False
+                        if module_name not in cls.ALLOWED_MODULES:
+                            logger.warning(f"Import from not in allowed list: {module_name}")
+                            return False
+                
+                # Block dangerous function calls
+                elif isinstance(node, ast.Call):
+                    if isinstance(node.func, ast.Name):
+                        if node.func.id in ['eval', 'exec', 'compile', '__import__', 'open']:
+                            logger.warning(f"Blocked dangerous function call: {node.func.id}")
+                            return False
+            
             return True
+            
         except SyntaxError as e:
             logger.warning(f"Script syntax error: {str(e)}")
             return False

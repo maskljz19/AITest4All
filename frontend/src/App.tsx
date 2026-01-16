@@ -1,40 +1,46 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
-import { Layout } from 'antd'
+import { Spin } from 'antd'
+import ErrorBoundary from './components/ErrorBoundary'
+import MainLayout from './components/Layout/MainLayout'
 import './App.css'
 
-const { Header, Content } = Layout
+// Lazy load pages
+const Home = lazy(() => import('./pages/Home'))
+const Generate = lazy(() => import('./pages/Generate'))
+const KnowledgeBase = lazy(() => import('./pages/KnowledgeBase'))
+const Scripts = lazy(() => import('./pages/Scripts'))
+const Templates = lazy(() => import('./pages/Templates'))
+const Settings = lazy(() => import('./pages/Settings'))
+
+// Loading component
+const PageLoader = () => (
+  <div style={{ 
+    display: 'flex', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    height: '100vh' 
+  }}>
+    <Spin size="large" tip="加载中..." />
+  </div>
+)
 
 function App() {
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ 
-        display: 'flex', 
-        alignItems: 'center',
-        background: '#001529',
-        color: '#fff',
-        fontSize: '20px',
-        fontWeight: 'bold'
-      }}>
-        AI测试用例生成系统
-      </Header>
-      <Content style={{ padding: '24px' }}>
+    <ErrorBoundary>
+      <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/" element={
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '50px',
-              background: '#fff',
-              borderRadius: '8px'
-            }}>
-              <h1>欢迎使用AI测试用例生成系统</h1>
-              <p style={{ fontSize: '16px', color: '#666', marginTop: '20px' }}>
-                系统正在开发中...
-              </p>
-            </div>
-          } />
+          <Route path="/" element={<MainLayout />}>
+            <Route index element={<Home />} />
+            <Route path="generate" element={<Generate />} />
+            <Route path="knowledge-base" element={<KnowledgeBase />} />
+            <Route path="scripts" element={<Scripts />} />
+            <Route path="templates" element={<Templates />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
         </Routes>
-      </Content>
-    </Layout>
+      </Suspense>
+    </ErrorBoundary>
   )
 }
 

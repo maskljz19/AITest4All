@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "test-knowledge": {
+      "command": "python",
+      "args": ["scripts/start_mcp_server.py"],
+      "description": "测试用例知识库服务 - 提供测试用例、规范、缺陷和 API 文档的搜索功能",
+      "env": {
+        "PYTHONPATH": "."
+      }
+    }
+  }
+}

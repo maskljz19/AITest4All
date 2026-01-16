@@ -141,7 +141,9 @@ async def websocket_generate(websocket: WebSocket):
         manager.active_connections[session_id] = websocket
         
         # Initialize services
-        session_manager = SessionManager()
+        from app.core.redis_client import get_redis
+        redis = await get_redis()
+        session_manager = SessionManager(redis)
         
         # Route to appropriate handler
         if action == "requirement":
@@ -193,16 +195,19 @@ async def handle_requirement_stream(session_id: str, data: Dict[str, Any], sessi
         kb_context = ""
         if kb_ids:
             await manager.send_progress(session_id, 20, "requirement", "kb_search")
-            kb_service = KnowledgeBaseService()
-            try:
-                kb_results = await kb_service.search(requirement_text, "rule", limit=3)
-                if kb_results:
-                    kb_context = "\n\n".join([
-                        f"参考文档 {i+1}:\n{result['content']}"
-                        for i, result in enumerate(kb_results)
-                    ])
-            except Exception as e:
-                logger.warning(f"Failed to retrieve knowledge base: {e}")
+            # Need DB session for KnowledgeBaseService
+            from app.core.database import get_async_session
+            async with get_async_session() as db:
+                kb_service = KnowledgeBaseService(db)
+                try:
+                    kb_results = await kb_service.search(requirement_text, "rule", limit=3)
+                    if kb_results:
+                        kb_context = "\n\n".join([
+                            f"参考文档 {i+1}:\n{result['content']}"
+                            for i, result in enumerate(kb_results)
+                        ])
+                except Exception as e:
+                    logger.warning(f"Failed to retrieve knowledge base: {e}")
         
         await manager.send_progress(session_id, 40, "requirement", "analyzing")
         

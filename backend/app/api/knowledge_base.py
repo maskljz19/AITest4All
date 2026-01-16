@@ -11,6 +11,7 @@ import json
 from app.services.knowledge_base import KnowledgeBaseService
 from app.services.document_parser import DocumentParser
 from app.core.database import get_db
+from app.core.security import FileSecurityValidator
 
 router = APIRouter(prefix="/api/v1/knowledge-base", tags=["knowledge-base"])
 
@@ -66,15 +67,14 @@ async def upload_document(
     kb_service = KnowledgeBaseService(db)
     
     try:
-        # Validate file type
-        allowed_extensions = ['.docx', '.pdf', '.md', '.xlsx', '.txt']
-        file_ext = os.path.splitext(file.filename)[1].lower()
+        # Validate file upload security
+        is_valid, error, sanitized_name = await FileSecurityValidator.validate_upload(file)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=error)
         
-        if file_ext not in allowed_extensions:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported file type. Allowed: {', '.join(allowed_extensions)}"
-            )
+        # Update filename with sanitized version
+        original_filename = file.filename
+        file.filename = sanitized_name
         
         # Parse metadata if provided
         meta_dict = None
@@ -91,7 +91,7 @@ async def upload_document(
         result = await kb_service.upload_document(
             file=file,
             kb_type=type,
-            name=name,
+            name=name or original_filename,
             metadata=meta_dict
         )
         
