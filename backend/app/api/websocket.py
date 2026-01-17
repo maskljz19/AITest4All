@@ -7,14 +7,7 @@ from typing import Dict, Any, Optional
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from enum import Enum
 
-from app.agents import (
-    RequirementAgent,
-    ScenarioAgent,
-    CaseAgent,
-    CodeAgent,
-    QualityAgent,
-    OptimizeAgent,
-)
+from app.agents import factory
 from app.services import SessionManager, DocumentParser, KnowledgeBaseService
 
 logger = logging.getLogger(__name__)
@@ -212,7 +205,7 @@ async def handle_requirement_stream(session_id: str, data: Dict[str, Any], sessi
         await manager.send_progress(session_id, 40, "requirement", "analyzing")
         
         # Initialize agent with streaming callback
-        agent = RequirementAgent()
+        agent = factory.create_requirement_agent()
         
         async def stream_callback(chunk: str):
             await manager.send_chunk(session_id, chunk, "requirement", "analyzing")
@@ -249,7 +242,7 @@ async def handle_scenario_stream(session_id: str, data: Dict[str, Any], session_
         await manager.send_progress(session_id, 30, "scenario", "generating")
         
         # Initialize agent
-        agent = ScenarioAgent()
+        agent = factory.create_scenario_agent()
         
         async def stream_callback(chunk: str):
             await manager.send_chunk(session_id, chunk, "scenario", "generating")
@@ -285,7 +278,7 @@ async def handle_case_stream(session_id: str, data: Dict[str, Any], session_mana
         await manager.send_progress(session_id, 30, "case", "generating")
         
         # Initialize agent
-        agent = CaseAgent()
+        agent = factory.create_case_agent()
         
         async def stream_callback(chunk: str):
             await manager.send_chunk(session_id, chunk, "case", "generating")
@@ -323,7 +316,7 @@ async def handle_code_stream(session_id: str, data: Dict[str, Any], session_mana
         await manager.send_progress(session_id, 30, "code", "generating")
         
         # Initialize agent
-        agent = CodeAgent()
+        agent = factory.create_code_agent()
         
         async def stream_callback(chunk: str):
             await manager.send_chunk(session_id, chunk, "code", "generating")
@@ -361,7 +354,7 @@ async def handle_quality_stream(session_id: str, data: Dict[str, Any], session_m
         await manager.send_progress(session_id, 30, "quality", "analyzing")
         
         # Initialize agent
-        agent = QualityAgent()
+        agent = factory.create_quality_agent()
         
         async def stream_callback(chunk: str):
             await manager.send_chunk(session_id, chunk, "quality", "analyzing")
@@ -399,7 +392,7 @@ async def handle_optimize_stream(session_id: str, data: Dict[str, Any], session_
         await manager.send_progress(session_id, 30, "optimize", "optimizing")
         
         # Initialize agent
-        agent = OptimizeAgent()
+        agent = factory.create_optimize_agent()
         
         async def stream_callback(chunk: str):
             await manager.send_chunk(session_id, chunk, "optimize", "optimizing")
@@ -441,7 +434,7 @@ async def handle_supplement_stream(session_id: str, data: Dict[str, Any], sessio
         await manager.send_progress(session_id, 30, "supplement", "supplementing")
         
         # Initialize agent
-        agent = OptimizeAgent()
+        agent = factory.create_optimize_agent()
         
         async def stream_callback(chunk: str):
             await manager.send_chunk(session_id, chunk, "supplement", "supplementing")

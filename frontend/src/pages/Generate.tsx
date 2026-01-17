@@ -75,8 +75,11 @@ const Generate: React.FC = () => {
         session_id: sessionId || undefined,
       })
 
-      setSessionId(response.data.session_id)
-      setRequirementAnalysis(response.data.result)
+      // Backend returns flat structure with session_id and analysis fields
+      const { session_id, ...analysisResult } = response.data
+      
+      setSessionId(session_id)
+      setRequirementAnalysis(analysisResult)
       setCurrentStep(1)
       message.success('需求分析完成')
     } catch (error: any) {
@@ -96,14 +99,17 @@ const Generate: React.FC = () => {
   }
 
   const handleGenerateScenarios = async () => {
-    if (!requirementAnalysis || !sessionId) return
+    if (!requirementAnalysis || !sessionId) {
+      message.warning('缺少必要数据，请先完成需求分析')
+      return
+    }
 
     setIsLoading(true)
     try {
       const response = await generateApi.generateScenarios({
         session_id: sessionId,
         requirement_analysis: requirementAnalysis,
-        test_type: 'ui', // TODO: Get from requirement input
+        test_type: 'ui',
       })
 
       setScenarios(response.data.scenarios)

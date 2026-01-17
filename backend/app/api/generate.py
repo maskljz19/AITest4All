@@ -24,14 +24,7 @@ from app.schemas import (
     ErrorResponse,
     TestType,
 )
-from app.agents import (
-    RequirementAgent,
-    ScenarioAgent,
-    CaseAgent,
-    CodeAgent,
-    QualityAgent,
-    OptimizeAgent,
-)
+from app.agents import factory
 from app.services import (
     DocumentParser,
     DocumentParseError,
@@ -165,7 +158,7 @@ async def analyze_requirement(
                 # Continue without knowledge base
         
         # Initialize requirement agent
-        agent = RequirementAgent()
+        agent = factory.create_requirement_agent()
         
         # Analyze requirement
         try:
@@ -255,7 +248,7 @@ async def generate_scenarios(
                 logger.warning(f"Failed to retrieve defect history: {e}")
         
         # Initialize scenario agent
-        agent = ScenarioAgent()
+        agent = factory.create_scenario_agent()
         
         # Generate scenarios
         try:
@@ -328,7 +321,7 @@ async def generate_cases(
             )
         
         # Initialize case agent
-        agent = CaseAgent()
+        agent = factory.create_case_agent()
         
         # Generate test cases
         try:
@@ -401,7 +394,7 @@ async def generate_code(
             )
         
         # Initialize code agent
-        agent = CodeAgent()
+        agent = factory.create_code_agent()
         
         # Generate code
         try:
@@ -489,7 +482,7 @@ async def analyze_quality(
                 logger.warning(f"Failed to retrieve defect history: {e}")
         
         # Initialize quality agent
-        agent = QualityAgent()
+        agent = factory.create_quality_agent()
         
         # Analyze quality
         try:
@@ -564,7 +557,7 @@ async def optimize_cases(
             )
         
         # Initialize optimize agent
-        agent = OptimizeAgent()
+        agent = factory.create_optimize_agent()
         
         # Optimize cases
         try:
@@ -642,7 +635,7 @@ async def supplement_cases(
             )
         
         # Initialize optimize agent (handles both optimize and supplement)
-        agent = OptimizeAgent()
+        agent = factory.create_optimize_agent()
         
         # Supplement cases
         try:
