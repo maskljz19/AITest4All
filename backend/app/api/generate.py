@@ -421,9 +421,11 @@ async def generate_code(
             result
         )
         
+        # Return response with proper structure
+        # result should be a dict with file paths as keys and code as values
         return CodeGenerationResponse(
             session_id=request.session_id,
-            files=result
+            files=result if isinstance(result, dict) else {}
         )
         
     except HTTPException:

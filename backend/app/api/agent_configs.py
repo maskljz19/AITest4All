@@ -64,6 +64,7 @@ async def list_agent_configs(
                 "agent_name": config.agent_name,
                 "model_provider": config.model_provider,
                 "model_name": config.model_name,
+                "prompt_template": config.prompt_template,
                 "model_params": config.model_params,
                 "knowledge_bases": config.knowledge_bases or [],
                 "scripts": config.scripts or [],
@@ -215,10 +216,12 @@ async def update_agent_config(
                 "agent_name": config.agent_name,
                 "model_provider": config.model_provider,
                 "model_name": config.model_name,
+                "prompt_template": config.prompt_template,
                 "model_params": config.model_params,
                 "knowledge_bases": config.knowledge_bases or [],
                 "scripts": config.scripts or [],
                 "is_default": config.is_default,
+                "created_at": config.created_at.isoformat(),
                 "updated_at": config.updated_at.isoformat()
             }
         }
@@ -262,14 +265,17 @@ async def reset_agent_config(
                 detail=f"Configuration for agent type '{agent_type}' not found"
             )
         
-        # Get default configuration from seed data
-        # This would typically restore from a default configuration file or database
+        # Load default prompt template from file
+        from app.services.prompt_manager import prompt_manager
+        default_prompt = prompt_manager.get_prompt(f"{agent_type}_agent") or ""
+        
+        # Get default configuration
         default_configs = {
             'requirement': {
                 'agent_name': 'Requirement Analysis Agent',
                 'model_provider': 'openai',
                 'model_name': 'gpt-4',
-                'prompt_template': '你是一个专业的需求分析专家...',
+                'prompt_template': default_prompt,
                 'model_params': {'temperature': 0.7, 'max_tokens': 2000},
                 'knowledge_bases': [],
                 'scripts': []
@@ -278,7 +284,7 @@ async def reset_agent_config(
                 'agent_name': 'Scenario Generation Agent',
                 'model_provider': 'openai',
                 'model_name': 'gpt-4',
-                'prompt_template': '你是一个专业的测试场景设计专家...',
+                'prompt_template': default_prompt,
                 'model_params': {'temperature': 0.8, 'max_tokens': 2000},
                 'knowledge_bases': [],
                 'scripts': []
@@ -287,7 +293,7 @@ async def reset_agent_config(
                 'agent_name': 'Test Case Generation Agent',
                 'model_provider': 'openai',
                 'model_name': 'gpt-4',
-                'prompt_template': '你是一个专业的测试用例编写专家...',
+                'prompt_template': default_prompt,
                 'model_params': {'temperature': 0.7, 'max_tokens': 3000},
                 'knowledge_bases': [],
                 'scripts': []
@@ -296,7 +302,7 @@ async def reset_agent_config(
                 'agent_name': 'Code Generation Agent',
                 'model_provider': 'openai',
                 'model_name': 'gpt-4',
-                'prompt_template': '你是一个专业的自动化测试代码生成专家...',
+                'prompt_template': default_prompt,
                 'model_params': {'temperature': 0.5, 'max_tokens': 4000},
                 'knowledge_bases': [],
                 'scripts': []
@@ -305,7 +311,7 @@ async def reset_agent_config(
                 'agent_name': 'Quality Analysis Agent',
                 'model_provider': 'openai',
                 'model_name': 'gpt-4',
-                'prompt_template': '你是一个专业的测试质量分析专家...',
+                'prompt_template': default_prompt,
                 'model_params': {'temperature': 0.6, 'max_tokens': 2000},
                 'knowledge_bases': [],
                 'scripts': []
@@ -342,6 +348,10 @@ async def reset_agent_config(
                 "agent_name": config.agent_name,
                 "model_provider": config.model_provider,
                 "model_name": config.model_name,
+                "prompt_template": config.prompt_template,
+                "model_params": config.model_params,
+                "knowledge_bases": config.knowledge_bases or [],
+                "scripts": config.scripts or [],
                 "is_default": config.is_default,
                 "updated_at": config.updated_at.isoformat()
             }

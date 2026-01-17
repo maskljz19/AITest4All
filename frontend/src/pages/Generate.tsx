@@ -203,7 +203,10 @@ const Generate: React.FC = () => {
         tech_stack: techStack,
       })
 
-      setCodeFiles(response.data)
+      // Backend returns { session_id, files: {...} }
+      // Wrap it in the expected structure for the component
+      const codeData = response.data.files ? { files: response.data.files } : response.data
+      setCodeFiles(codeData)
       setCurrentStep(4)
       message.success('代码生成完成')
     } catch (error: any) {
@@ -214,7 +217,12 @@ const Generate: React.FC = () => {
   }
 
   const handleCodeUpdate = (files: any) => {
-    setCodeFiles(files)
+    // Ensure the structure is correct
+    if (files && files.files) {
+      setCodeFiles(files)
+    } else if (files) {
+      setCodeFiles({ files })
+    }
   }
 
   const handleAnalyzeQuality = async () => {

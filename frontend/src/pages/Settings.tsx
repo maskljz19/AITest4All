@@ -112,7 +112,7 @@ const SettingsPage: React.FC = () => {
     form.setFieldsValue({
       model_provider: config.model_provider,
       model_name: config.model_name,
-      prompt_template: config.prompt_template,
+      prompt_template: config.prompt_template || '',
       temperature: config.model_params?.temperature || 0.7,
       max_tokens: config.model_params?.max_tokens || 2000,
       top_p: config.model_params?.top_p || 1.0,
