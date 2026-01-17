@@ -122,25 +122,33 @@ npm run dev
 
 访问 http://localhost:5173
 
-### Docker部署
+### Docker部署（推荐）
 
 ```bash
-# 使用Docker Compose一键部署
+# 1. 配置环境变量（仅需配置根目录的 .env 文件）
+cp .env.docker.example .env
+
+# 2. 编辑 .env 文件，配置必要参数
+vim .env
+# 必须配置：POSTGRES_PASSWORD, OPENAI_API_KEY 或 ANTHROPIC_API_KEY
+
+# 3. 启动所有服务
 docker-compose up -d
 
-# 查看服务状态
+# 4. 查看服务状态
 docker-compose ps
-
-# 查看日志
-docker-compose logs -f
 ```
+
+访问 http://localhost:3000 使用系统
+
+详细的 Docker 部署说明请查看 [部署运维文档](./部署运维文档.md)
 
 ## 📖 文档导航
 
 - [用户指南](./用户指南.md) - 系统使用说明和操作指南
 - [开发者文档](./开发者文档.md) - 开发环境搭建和代码结构说明
 - [接口文档](./接口文档.md) - API接口详细说明
-- [部署运维文档](./部署运维文档.md) - 生产环境部署和运维指南
+- [部署运维文档](./部署运维文档.md) - Docker部署和生产环境运维指南
 - [工具使用文档](./工具使用文档.md) - 知识库、脚本、模板等工具使用说明
 
 ## 🎯 核心功能
