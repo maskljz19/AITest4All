@@ -420,7 +420,7 @@ const Generate: React.FC = () => {
               上一步
             </Button>
           )}
-          {currentStep < 6 && currentStep > 0 && (
+          {currentStep < 6 && (
             <Button 
               type="default"
               onClick={handleNext} 
