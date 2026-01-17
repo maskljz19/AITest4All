@@ -83,7 +83,8 @@ const SettingsPage: React.FC = () => {
         quality: null,
       }
 
-      configsRes.data.forEach((config: AgentConfig) => {
+      const configs = Array.isArray(configsRes.data.data) ? configsRes.data.data : []
+      configs.forEach((config: AgentConfig) => {
         configsMap[config.agent_type] = config
       })
 
@@ -166,7 +167,7 @@ const SettingsPage: React.FC = () => {
       // 更新本地状态
       setAgentConfigs({
         ...agentConfigs,
-        [activeAgent]: response.data,
+        [activeAgent]: response.data.data,
       })
 
       message.success('保存成功')
@@ -187,11 +188,11 @@ const SettingsPage: React.FC = () => {
       // 更新本地状态
       setAgentConfigs({
         ...agentConfigs,
-        [activeAgent]: response.data,
+        [activeAgent]: response.data.data,
       })
 
       // 重新加载到表单
-      loadConfigToForm(response.data)
+      loadConfigToForm(response.data.data)
       message.success('已恢复默认配置')
     } catch (error: any) {
       message.error(error.response?.data?.message || '恢复默认配置失败')

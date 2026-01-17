@@ -77,7 +77,7 @@ const TemplatesPage: React.FC = () => {
     try {
       const params = filterType === 'all' ? {} : { test_type: filterType }
       const response = await templatesApi.getList(params)
-      setDataSource(response.data || [])
+      setDataSource(Array.isArray(response.data.data) ? response.data.data : [])
     } catch (error: any) {
       message.error(error.response?.data?.message || '加载模板列表失败')
     } finally {

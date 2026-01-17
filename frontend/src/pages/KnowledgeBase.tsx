@@ -161,7 +161,7 @@ const KnowledgeBasePage: React.FC = () => {
         query: searchText,
         type: filterType === 'all' ? undefined : filterType,
       })
-      setDataSource(response.data || [])
+      setDataSource(Array.isArray(response.data.data) ? response.data.data : [])
     } catch (error: any) {
       message.error(error.response?.data?.message || '搜索失败')
     } finally {
