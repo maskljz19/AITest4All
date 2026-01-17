@@ -26,7 +26,7 @@ async def get_session_manager() -> SessionManager:
 class ExportCasesRequest(BaseModel):
     """Request model for exporting test cases"""
     session_id: str
-    format: str  # excel/word/json/markdown/html
+    format: str  # excel/word/json/markdown/html/csv
     include_requirement: bool = False
     include_scenarios: bool = False
     include_cases: bool = True
@@ -281,6 +281,52 @@ def generate_html_export(data: dict) -> bytes:
         )
 
 
+def generate_csv_export(data: dict) -> bytes:
+    """Generate CSV file from test cases"""
+    try:
+        import csv
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow([
+            "Case ID", "Title", "Test Type", "Priority", 
+            "Precondition", "Steps", "Expected Result", "Postcondition"
+        ])
+        
+        # Write data
+        cases = data.get("cases", [])
+        for case in cases:
+            # Format steps
+            steps = case.get("steps", [])
+            steps_text = "; ".join([
+                f"{s.get('step_no', '')}. {s.get('action', '')} (Data: {s.get('data', '')}, Expected: {s.get('expected', '')})"
+                for s in steps
+            ])
+            
+            writer.writerow([
+                case.get("case_id", ""),
+                case.get("title", ""),
+                case.get("test_type", ""),
+                case.get("priority", ""),
+                case.get("precondition", ""),
+                steps_text,
+                case.get("expected_result", ""),
+                case.get("postcondition", "")
+            ])
+        
+        # Get CSV content
+        output.seek(0)
+        return output.getvalue().encode('utf-8-sig')  # Use utf-8-sig for Excel compatibility
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate CSV: {str(e)}"
+        )
+
+
 @router.post("/cases")
 async def export_cases(
     request: ExportCasesRequest,
@@ -360,10 +406,15 @@ async def export_cases(
             media_type = "text/html"
             filename = f"test_cases_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
         
+        elif format_lower == "csv":
+            content = generate_csv_export(data)
+            media_type = "text/csv"
+            filename = f"test_cases_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        
         else:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unsupported format: {request.format}. Supported: excel, word, json, markdown, html"
+                detail=f"Unsupported format: {request.format}. Supported: excel, word, json, markdown, html, csv"
             )
         
         # Return file

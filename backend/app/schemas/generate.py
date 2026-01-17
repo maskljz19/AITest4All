@@ -146,10 +146,19 @@ class CoverageAnalysis(BaseModel):
     missing_scenarios: List[str] = Field(..., description="Missing scenarios")
 
 
+class NonSmartCase(BaseModel):
+    """Non-SMART case model"""
+    case_id: str = Field(..., description="Case ID")
+    issues: List[str] = Field(..., description="List of issues")
+    
+    class Config:
+        extra = "allow"
+
+
 class QualityAnalysis(BaseModel):
     """Quality analysis model"""
     duplicate_cases: List[str] = Field(..., description="Duplicate cases")
-    non_smart_cases: List[str] = Field(..., description="Non-SMART cases")
+    non_smart_cases: List[Union[str, NonSmartCase]] = Field(..., description="Non-SMART cases (can be string or object)")
     incomplete_data: List[str] = Field(..., description="Incomplete data")
 
 

@@ -17,7 +17,7 @@ interface ExportPanelProps {
   hasQualityReport: boolean
 }
 
-type ExportFormat = 'excel' | 'word' | 'json' | 'markdown' | 'html'
+type ExportFormat = 'excel' | 'word' | 'json' | 'markdown' | 'html' | 'csv'
 type ExportContent = 'requirement' | 'scenarios' | 'cases' | 'code' | 'quality_report'
 
 const ExportPanel: React.FC<ExportPanelProps> = ({
@@ -72,7 +72,14 @@ const ExportPanel: React.FC<ExportPanelProps> = ({
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `test_cases_${Date.now()}.${caseFormat}`
+        
+        // Determine correct file extension
+        let extension: string = caseFormat
+        if (caseFormat === 'excel') extension = 'xlsx'
+        else if (caseFormat === 'word') extension = 'docx'
+        else if (caseFormat === 'markdown') extension = 'md'
+        
+        a.download = `test_cases_${Date.now()}.${extension}`
         a.click()
         URL.revokeObjectURL(url)
 
@@ -137,6 +144,7 @@ const ExportPanel: React.FC<ExportPanelProps> = ({
               <Radio.Group value={caseFormat} onChange={(e) => setCaseFormat(e.target.value)}>
                 <Radio.Button value="excel">Excel</Radio.Button>
                 <Radio.Button value="word">Word</Radio.Button>
+                <Radio.Button value="csv">CSV</Radio.Button>
                 <Radio.Button value="json">JSON</Radio.Button>
                 <Radio.Button value="markdown">Markdown</Radio.Button>
                 <Radio.Button value="html">HTML</Radio.Button>

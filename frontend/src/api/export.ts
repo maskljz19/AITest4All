@@ -5,7 +5,7 @@ import apiClient from './client'
 
 export interface ExportCasesRequest {
   session_id: string
-  format: 'excel' | 'word' | 'json' | 'markdown' | 'html'
+  format: 'excel' | 'word' | 'json' | 'markdown' | 'html' | 'csv'
   include_requirement?: boolean
   include_scenarios?: boolean
   include_cases?: boolean
