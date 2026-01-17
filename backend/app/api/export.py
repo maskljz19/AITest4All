@@ -1,6 +1,6 @@
 """Export API for Test Cases and Code"""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse, Response
 from typing import List, Optional
 from pydantic import BaseModel
@@ -9,26 +9,34 @@ import io
 import zipfile
 from datetime import datetime
 
+from app.services.session_manager import SessionManager
+
 router = APIRouter(prefix="/api/v1/export", tags=["export"])
+
+
+# Dependency to get services
+async def get_session_manager() -> SessionManager:
+    """Get session manager instance"""
+    from app.core.redis_client import get_redis
+    redis = await get_redis()
+    return SessionManager(redis)
 
 
 # Request Models
 class ExportCasesRequest(BaseModel):
     """Request model for exporting test cases"""
+    session_id: str
     format: str  # excel/word/json/markdown/html
-    cases: List[dict]
-    scenarios: Optional[List[dict]] = None
-    quality_report: Optional[dict] = None
-    agent_configs: Optional[List[dict]] = None
+    include_requirement: bool = False
     include_scenarios: bool = False
+    include_cases: bool = True
     include_quality_report: bool = False
-    include_agent_configs: bool = False
 
 
 class ExportCodeRequest(BaseModel):
     """Request model for exporting code"""
+    session_id: str
     format: str  # zip/single/project
-    files: dict  # filename -> content mapping
     project_name: Optional[str] = "test_automation"
 
 
@@ -274,26 +282,55 @@ def generate_html_export(data: dict) -> bytes:
 
 
 @router.post("/cases")
-async def export_cases(request: ExportCasesRequest):
+async def export_cases(
+    request: ExportCasesRequest,
+    session_manager: SessionManager = Depends(get_session_manager)
+):
     """
     Export test cases in various formats
     
     Supports: Excel, Word, JSON, Markdown, HTML
     """
     try:
+        # Get data from session
+        cases = []
+        scenarios = []
+        requirement_analysis = None
+        quality_report = None
+        
+        if request.include_cases:
+            cases = await session_manager.get_step_result(request.session_id, "cases") or []
+        
+        if request.include_scenarios:
+            scenarios = await session_manager.get_step_result(request.session_id, "scenarios") or []
+        
+        if request.include_requirement:
+            requirement_analysis = await session_manager.get_step_result(request.session_id, "requirement_analysis")
+        
+        if request.include_quality_report:
+            quality_report = await session_manager.get_step_result(request.session_id, "quality_report")
+        
+        # Check if we have data to export
+        if not cases and not scenarios and not requirement_analysis and not quality_report:
+            raise HTTPException(
+                status_code=400,
+                detail="No data available to export. Please generate test cases first."
+            )
+        
         # Prepare data
-        data = {
-            "cases": request.cases
-        }
+        data = {}
         
-        if request.include_scenarios and request.scenarios:
-            data["scenarios"] = request.scenarios
+        if cases:
+            data["cases"] = cases
         
-        if request.include_quality_report and request.quality_report:
-            data["quality_report"] = request.quality_report
+        if scenarios:
+            data["scenarios"] = scenarios
         
-        if request.include_agent_configs and request.agent_configs:
-            data["agent_configs"] = request.agent_configs
+        if requirement_analysis:
+            data["requirement_analysis"] = requirement_analysis
+        
+        if quality_report:
+            data["quality_report"] = quality_report
         
         # Generate export based on format
         format_lower = request.format.lower()
@@ -348,13 +385,34 @@ async def export_cases(request: ExportCasesRequest):
 
 
 @router.post("/code")
-async def export_code(request: ExportCodeRequest):
+async def export_code(
+    request: ExportCodeRequest,
+    session_manager: SessionManager = Depends(get_session_manager)
+):
     """
     Export test automation code
     
     Supports: ZIP (multiple files), single file, project structure
     """
     try:
+        # Get code files from session
+        code_result = await session_manager.get_step_result(request.session_id, "code")
+        
+        if not code_result:
+            raise HTTPException(
+                status_code=400,
+                detail="No code available to export. Please generate code first."
+            )
+        
+        # Extract files from result
+        files = code_result.get("files", {}) if isinstance(code_result, dict) else {}
+        
+        if not files:
+            raise HTTPException(
+                status_code=400,
+                detail="No code files found in session."
+            )
+        
         format_lower = request.format.lower()
         
         if format_lower == "zip":
@@ -362,7 +420,7 @@ async def export_code(request: ExportCodeRequest):
             zip_buffer = io.BytesIO()
             
             with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                for filename, content in request.files.items():
+                for filename, content in files.items():
                     zip_file.writestr(filename, content)
             
             zip_buffer.seek(0)
@@ -373,7 +431,7 @@ async def export_code(request: ExportCodeRequest):
         elif format_lower == "single":
             # Combine all files into a single file
             combined = []
-            for filename, file_content in request.files.items():
+            for filename, file_content in files.items():
                 combined.append(f"# File: {filename}\n")
                 combined.append(file_content)
                 combined.append("\n\n")
@@ -388,11 +446,11 @@ async def export_code(request: ExportCodeRequest):
             
             with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
                 # Add all files with proper directory structure
-                for filepath, content in request.files.items():
-                    zip_file.writestr(f"{request.project_name}/{filepath}", content)
+                for filepath, file_content in files.items():
+                    zip_file.writestr(f"{request.project_name}/{filepath}", file_content)
                 
                 # Add README if not present
-                if "README.md" not in request.files:
+                if "README.md" not in files:
                     readme_content = f"""# {request.project_name}
 
 Test automation project generated by AI Test Case Generator.

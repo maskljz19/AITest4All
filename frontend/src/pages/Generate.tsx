@@ -248,19 +248,9 @@ const Generate: React.FC = () => {
   }
 
   const handleNext = () => {
-    if (currentStep === 1) {
-      handleGenerateScenarios()
-    } else if (currentStep === 2) {
-      handleGenerateCases()
-    } else if (currentStep === 3) {
-      // 用例生成后，可以选择质量分析或直接导出
-      setCurrentStep(currentStep + 1)
-    } else if (currentStep === 4) {
-      // 质量分析后，可以生成代码
-      setCurrentStep(currentStep + 1)
-    } else {
-      setCurrentStep(currentStep + 1)
-    }
+    // 简单地跳转到下一步，不触发生成操作
+    // 生成操作由各步骤内的专用按钮触发
+    setCurrentStep(currentStep + 1)
   }
 
   const handlePrev = () => {
@@ -423,16 +413,20 @@ const Generate: React.FC = () => {
         )}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
         <Space>
           {currentStep > 0 && (
             <Button onClick={handlePrev} disabled={isLoading}>
               上一步
             </Button>
           )}
-          {currentStep < 6 && currentStep > 0 && currentStep !== 3 && currentStep !== 4 && (
-            <Button type="primary" onClick={handleNext} loading={isLoading}>
-              {currentStep === 1 ? '生成场景' : currentStep === 2 ? '生成用例' : '下一步'}
+          {currentStep < 6 && currentStep > 0 && (
+            <Button 
+              type="default"
+              onClick={handleNext} 
+              disabled={isLoading}
+            >
+              下一步
             </Button>
           )}
         </Space>
