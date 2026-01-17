@@ -46,9 +46,9 @@ knowledge_base/
 .git/
 .gitignore
 
-# Alembic
-alembic.ini
+# Keep alembic.ini for migrations
+# alembic.ini
 
-# Scripts
-scripts/
+# Keep migration scripts
+# scripts/
 tests/
