@@ -16,6 +16,7 @@ from app.core.error_handlers import (
     validation_exception_handler,
     general_exception_handler
 )
+from app.middleware import LoggingMiddleware, setup_logging_filters
 from app.api import generate_router, websocket_router, prompts_router, model_config_router, feedback_router
 from app.api.knowledge_base import router as knowledge_base_router
 from app.api.scripts import router as scripts_router
@@ -30,6 +31,8 @@ async def lifespan(app: FastAPI):
     # Startup
     await init_db()
     await init_redis()
+    # Setup logging filters
+    setup_logging_filters()
     yield
     # Shutdown
     await close_db()
@@ -57,6 +60,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add logging middleware to filter health check logs
+app.add_middleware(LoggingMiddleware)
 
 # Include routers
 app.include_router(generate_router)
