@@ -88,8 +88,8 @@ const SettingsPage: React.FC = () => {
       })
 
       setAgentConfigs(configsMap)
-      setKnowledgeBases(kbRes.data || [])
-      setScripts(scriptsRes.data || [])
+      setKnowledgeBases(Array.isArray(kbRes.data.data) ? kbRes.data.data : [])
+      setScripts(Array.isArray(scriptsRes.data.data) ? scriptsRes.data.data : [])
 
       // 加载当前Agent配置到表单
       if (configsMap[activeAgent]) {

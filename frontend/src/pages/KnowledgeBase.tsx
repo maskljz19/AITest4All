@@ -62,7 +62,7 @@ const KnowledgeBasePage: React.FC = () => {
     setLoading(true)
     try {
       const response = await knowledgeBaseApi.getList()
-      setDataSource(response.data || [])
+      setDataSource(Array.isArray(response.data.data) ? response.data.data : [])
     } catch (error: any) {
       message.error(error.response?.data?.message || '加载知识库列表失败')
     } finally {

@@ -55,9 +55,11 @@ const Generate: React.FC = () => {
   const loadKnowledgeBases = async () => {
     try {
       const response = await knowledgeBaseApi.getList()
-      setKnowledgeBases(response.data)
+      // Backend returns { success: true, data: [...], total: ... }
+      setKnowledgeBases(Array.isArray(response.data.data) ? response.data.data : [])
     } catch (error) {
       console.error('Failed to load knowledge bases:', error)
+      setKnowledgeBases([])
     }
   }
 
