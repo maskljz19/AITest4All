@@ -23,6 +23,7 @@ class ScriptCreateRequest(BaseModel):
     name: str
     description: Optional[str] = None
     code: str
+    example_input: Optional[dict] = None
 
 
 class ScriptUpdateRequest(BaseModel):
@@ -30,6 +31,7 @@ class ScriptUpdateRequest(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     code: Optional[str] = None
+    example_input: Optional[dict] = None
 
 
 class ScriptTestRequest(BaseModel):
@@ -44,6 +46,7 @@ class ScriptResponse(BaseModel):
     description: Optional[str]
     code: str
     dependencies: List[str]
+    example_input: Optional[dict]
     is_builtin: bool
     created_at: datetime
     updated_at: datetime
@@ -87,6 +90,7 @@ async def create_script(
             description=request.description,
             code=request.code,
             dependencies=dependencies,
+            example_input=request.example_input,
             is_builtin=False
         )
         
@@ -150,6 +154,7 @@ async def list_scripts(
                 "name": script.name,
                 "description": script.description,
                 "dependencies": script.dependencies,
+                "example_input": script.example_input,
                 "is_builtin": script.is_builtin,
                 "created_at": script.created_at.isoformat(),
                 "updated_at": script.updated_at.isoformat()
@@ -197,6 +202,7 @@ async def get_script(
                 "description": script.description,
                 "code": script.code,
                 "dependencies": script.dependencies,
+                "example_input": script.example_input,
                 "is_builtin": script.is_builtin,
                 "created_at": script.created_at.isoformat(),
                 "updated_at": script.updated_at.isoformat()
@@ -271,6 +277,9 @@ async def update_script(
             
             script.code = request.code
             script.dependencies = script_executor.extract_dependencies(request.code)
+        
+        if request.example_input is not None:
+            script.example_input = request.example_input
         
         script.updated_at = datetime.utcnow()
         

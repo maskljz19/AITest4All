@@ -36,6 +36,7 @@ interface Script {
   description?: string
   code: string
   dependencies?: string[]
+  example_input?: Record<string, any>
   is_builtin: boolean
   created_at: string
   updated_at: string
@@ -83,6 +84,7 @@ const ScriptsPage: React.FC = () => {
         dependencies: values.dependencies
           ? values.dependencies.split(',').map((d: string) => d.trim()).filter(Boolean)
           : [],
+        example_input: values.example_input ? JSON.parse(values.example_input) : null,
       }
 
       if (isEditing && selectedScript) {
@@ -124,7 +126,7 @@ const ScriptsPage: React.FC = () => {
     setLoading(true)
     try {
       const response = await scriptsApi.getDetail(record.id)
-      const script = response.data
+      const script = response.data.data
       setSelectedScript(script)
       setIsEditing(true)
       editForm.setFieldsValue({
@@ -132,6 +134,7 @@ const ScriptsPage: React.FC = () => {
         description: script.description,
         code: script.code,
         dependencies: script.dependencies?.join(', ') || '',
+        example_input: script.example_input ? JSON.stringify(script.example_input, null, 2) : '',
       })
       setEditModalVisible(true)
     } catch (error: any) {
@@ -148,6 +151,7 @@ const ScriptsPage: React.FC = () => {
     editForm.resetFields()
     editForm.setFieldsValue({
       code: `def main():\n    """脚本主函数"""\n    # 在这里编写你的代码\n    return "Hello, World!"\n\nif __name__ == "__main__":\n    result = main()\n    print(result)`,
+      example_input: '{}',
     })
     setEditModalVisible(true)
   }
@@ -157,6 +161,12 @@ const ScriptsPage: React.FC = () => {
     setSelectedScript(record)
     setTestResult(null)
     testForm.resetFields()
+    // 如果有示例输入，自动填充
+    if (record.example_input) {
+      testForm.setFieldsValue({
+        args: JSON.stringify(record.example_input, null, 2),
+      })
+    }
     setTestModalVisible(true)
   }
 
@@ -189,7 +199,7 @@ const ScriptsPage: React.FC = () => {
     setLoading(true)
     try {
       const response = await scriptsApi.getDetail(record.id)
-      setSelectedScript(response.data)
+      setSelectedScript(response.data.data)
       setDetailDrawerVisible(true)
     } catch (error: any) {
       message.error(error.response?.data?.message || '加载详情失败')
@@ -386,6 +396,18 @@ const ScriptsPage: React.FC = () => {
           >
             <Input placeholder="例如: requests, faker" />
           </Form.Item>
+
+          <Form.Item
+            name="example_input"
+            label="示例输入参数"
+            tooltip="用于测试脚本的示例输入，JSON格式"
+          >
+            <TextArea
+              rows={4}
+              placeholder='{"key": "value"}'
+              style={{ fontFamily: 'monospace' }}
+            />
+          </Form.Item>
         </Form>
       </Modal>
 
@@ -421,6 +443,19 @@ const ScriptsPage: React.FC = () => {
         width={800}
       >
         <Form form={testForm} layout="vertical" onFinish={handleRunTest}>
+          {selectedScript?.example_input && (
+            <Alert
+              message="参考输入示例"
+              description={
+                <pre style={{ margin: 0, fontFamily: 'monospace', fontSize: 12 }}>
+                  {JSON.stringify(selectedScript.example_input, null, 2)}
+                </pre>
+              }
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+          )}
           <Form.Item
             name="args"
             label="参数 (JSON格式)"
@@ -497,6 +532,23 @@ const ScriptsPage: React.FC = () => {
                       </Tag>
                     ))}
                   </Space>
+                </Paragraph>
+              )}
+              {selectedScript.example_input && (
+                <Paragraph>
+                  <strong>示例输入:</strong>
+                  <pre
+                    style={{
+                      marginTop: 8,
+                      padding: 12,
+                      background: '#f5f5f5',
+                      borderRadius: 4,
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                    }}
+                  >
+                    {JSON.stringify(selectedScript.example_input, null, 2)}
+                  </pre>
                 </Paragraph>
               )}
               <div style={{ marginTop: 16 }}>
