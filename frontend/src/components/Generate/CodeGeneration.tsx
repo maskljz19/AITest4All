@@ -1,10 +1,10 @@
 /**
  * Code Generation Component
- * 代码生成组件 - 技术栈配置、代码预览、文件树、编辑
+ * 代码生成组件 - 技术栈配置、代码预览、文件树、编辑、流式输出
  */
-import React, { useState } from 'react'
-import { Card, Row, Col, Radio, Input, Button, Tree, Space, message } from 'antd'
-import { FolderOutlined, FileOutlined, DownloadOutlined } from '@ant-design/icons'
+import React, { useState, useEffect, useRef } from 'react'
+import { Card, Row, Col, Radio, Input, Button, Tree, Space, message, Progress, Alert } from 'antd'
+import { FolderOutlined, FileOutlined, DownloadOutlined, LoadingOutlined } from '@ant-design/icons'
 import Editor from '@monaco-editor/react'
 import type { DataNode } from 'antd/es/tree'
 import { CodeFiles } from '@/types'
@@ -16,6 +16,8 @@ interface CodeGenerationProps {
   onGenerate: (useDefaultStack: boolean, techStack?: string) => void
   onUpdate: (files: CodeFiles) => void
   loading?: boolean
+  sessionId?: string
+  testCases?: any[]
 }
 
 const CodeGeneration: React.FC<CodeGenerationProps> = ({
@@ -23,11 +25,26 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
   onGenerate,
   onUpdate,
   loading = false,
+  sessionId,
+  testCases = [],
 }) => {
   const [useDefaultStack, setUseDefaultStack] = useState(true)
   const [customTechStack, setCustomTechStack] = useState('')
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [editedContent, setEditedContent] = useState<string>('')
+  const [streaming, setStreaming] = useState(false)
+  const [streamContent, setStreamContent] = useState('')
+  const [progress, setProgress] = useState(0)
+  const wsRef = useRef<WebSocket | null>(null)
+
+  useEffect(() => {
+    return () => {
+      // Cleanup WebSocket on unmount
+      if (wsRef.current) {
+        wsRef.current.close()
+      }
+    }
+  }, [])
 
   // Build file tree from code files
   const buildFileTree = (files: Record<string, string>): DataNode[] => {
@@ -64,12 +81,107 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
     return tree
   }
 
-  const handleGenerate = () => {
+  const handleGenerateWithStream = () => {
     if (!useDefaultStack && !customTechStack.trim()) {
       message.error('请输入自定义技术栈描述')
       return
     }
-    onGenerate(useDefaultStack, useDefaultStack ? undefined : customTechStack)
+
+    if (!sessionId || testCases.length === 0) {
+      message.error('缺少必要数据')
+      return
+    }
+
+    setStreaming(true)
+    setStreamContent('')
+    setProgress(10)
+
+    // Create WebSocket connection
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsUrl = `${protocol}//${window.location.host}/api/ws/generate`
+    const ws = new WebSocket(wsUrl)
+    wsRef.current = ws
+
+    ws.onopen = () => {
+      console.log('WebSocket connected')
+      // Send generation request
+      ws.send(
+        JSON.stringify({
+          action: 'code',
+          session_id: sessionId,
+          data: {
+            test_cases: testCases,
+            tech_stack: useDefaultStack ? undefined : customTechStack,
+            use_default_stack: useDefaultStack,
+          },
+        })
+      )
+    }
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data)
+
+        if (message.type === 'chunk') {
+          // Append streaming content
+          setStreamContent((prev) => prev + message.content)
+        } else if (message.type === 'progress') {
+          // Update progress
+          setProgress(message.metadata?.progress || 0)
+        } else if (message.type === 'done') {
+          // Generation complete
+          setProgress(100)
+          message.success('代码生成完成')
+          
+          // Parse the accumulated content as JSON
+          setTimeout(() => {
+            try {
+              const result = JSON.parse(streamContent)
+              if (result.files) {
+                onUpdate({ files: result.files })
+              }
+            } catch (e) {
+              console.error('Failed to parse generated code:', e)
+              message.error('代码解析失败，请重试')
+            }
+            setStreaming(false)
+            ws.close()
+          }, 500)
+        } else if (message.type === 'error') {
+          // Error occurred
+          message.error(message.error || '代码生成失败')
+          setStreaming(false)
+          ws.close()
+        }
+      } catch (e) {
+        console.error('Failed to parse WebSocket message:', e)
+      }
+    }
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error)
+      message.error('连接失败，请重试')
+      setStreaming(false)
+    }
+
+    ws.onclose = () => {
+      console.log('WebSocket closed')
+      wsRef.current = null
+    }
+  }
+
+  const handleGenerate = () => {
+    // Use streaming if sessionId and testCases are available
+    if (sessionId && testCases.length > 0) {
+      handleGenerateWithStream()
+    } else {
+      // Fallback to regular generation
+      if (!useDefaultStack && !customTechStack.trim()) {
+        message.error('请输入自定义技术栈描述')
+        return
+      }
+      onGenerate(useDefaultStack, useDefaultStack ? undefined : customTechStack)
+    }
   }
 
   const handleFileSelect = (selectedKeys: React.Key[]) => {
@@ -130,7 +242,7 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
 
   return (
     <Card title="代码生成" bordered={false}>
-      {!codeFiles ? (
+      {!codeFiles && !streaming ? (
         <div>
           <Space direction="vertical" style={{ width: '100%' }} size="large">
             <div>
@@ -138,7 +250,7 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
               <Radio.Group
                 value={useDefaultStack}
                 onChange={(e) => setUseDefaultStack(e.target.value)}
-                disabled={loading}
+                disabled={loading || streaming}
               >
                 <Space direction="vertical">
                   <Radio value={true}>
@@ -164,17 +276,54 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
                   placeholder="请描述您希望使用的技术栈，例如：使用Java + TestNG + RestAssured进行接口测试"
                   value={customTechStack}
                   onChange={(e) => setCustomTechStack(e.target.value)}
-                  disabled={loading}
+                  disabled={loading || streaming}
                 />
               </div>
             )}
 
-            <Button type="primary" size="large" onClick={handleGenerate} loading={loading}>
+            <Button
+              type="primary"
+              size="large"
+              onClick={handleGenerate}
+              loading={loading || streaming}
+            >
               生成代码
             </Button>
           </Space>
         </div>
-      ) : (
+      ) : streaming ? (
+        <div>
+          <Alert
+            message="正在生成代码..."
+            description="AI 正在为您生成测试代码，请稍候"
+            type="info"
+            showIcon
+            icon={<LoadingOutlined />}
+            style={{ marginBottom: 24 }}
+          />
+          <Progress percent={progress} status="active" style={{ marginBottom: 24 }} />
+          <Card
+            title="生成进度"
+            size="small"
+            bodyStyle={{ maxHeight: 400, overflow: 'auto' }}
+          >
+            <pre
+              style={{
+                margin: 0,
+                padding: 16,
+                background: '#f5f5f5',
+                borderRadius: 4,
+                fontSize: 12,
+                fontFamily: 'monospace',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
+              {streamContent || '等待响应...'}
+            </pre>
+          </Card>
+        </div>
+      ) : codeFiles ? (
         <Row gutter={16}>
           <Col span={6}>
             <Card title="文件树" size="small" bodyStyle={{ padding: 8 }}>
@@ -234,7 +383,7 @@ const CodeGeneration: React.FC<CodeGenerationProps> = ({
             </Card>
           </Col>
         </Row>
-      )}
+      ) : null}
     </Card>
   )
 }

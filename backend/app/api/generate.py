@@ -376,7 +376,6 @@ async def generate_cases(
 
 @router.post(
     "/code",
-    response_model=CodeGenerationResponse,
     responses={
         400: {"model": ErrorResponse},
         500: {"model": ErrorResponse},
@@ -388,6 +387,8 @@ async def generate_code(
 ):
     """
     Generate automated test code based on test cases
+    
+    Supports streaming response for large code generation
     """
     try:
         # Ensure session exists (auto-create if needed)
@@ -396,12 +397,23 @@ async def generate_code(
         # Initialize code agent
         agent = await factory.create_code_agent_async()
         
-        # Generate code
+        # Generate code with better error handling
         try:
             result = await agent.generate(
                 test_cases=[tc.dict() for tc in request.test_cases],
                 tech_stack=request.tech_stack,
                 use_default_stack=request.use_default_stack,
+            )
+        except ValueError as e:
+            # Handle JSON parsing errors
+            logger.error(f"Code generation parsing error: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error_code": "CODE_PARSE_ERROR",
+                    "message": f"Failed to parse generated code: {str(e)}",
+                    "retry_after": 5,
+                }
             )
         except Exception as e:
             logger.error(f"Code generation failed: {e}")
@@ -425,7 +437,7 @@ async def generate_code(
         # result should be a dict with file paths as keys and code as values
         return CodeGenerationResponse(
             session_id=request.session_id,
-            files=result if isinstance(result, dict) else {}
+            files=result.get("files", result) if isinstance(result, dict) else {}
         )
         
     except HTTPException:

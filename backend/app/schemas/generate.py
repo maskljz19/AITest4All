@@ -19,6 +19,9 @@ class RequirementAnalysisRequest(BaseModel):
     url: Optional[str] = Field(None, description="URL to fetch requirement from")
     test_type: TestType = Field(..., description="Type of test (ui/api/unit)")
     knowledge_base_ids: Optional[List[int]] = Field(None, description="Knowledge base IDs to use")
+    
+    class Config:
+        extra = "allow"  # 允许额外字段
 
 
 class RequirementAnalysisResponse(BaseModel):
@@ -38,17 +41,23 @@ class ScenarioGenerationRequest(BaseModel):
     requirement_analysis: Dict[str, Any] = Field(..., description="Requirement analysis result")
     test_type: TestType = Field(..., description="Type of test")
     defect_kb_ids: Optional[List[int]] = Field(None, description="Defect knowledge base IDs")
+    
+    class Config:
+        extra = "allow"  # 允许额外字段
 
 
 class Scenario(BaseModel):
     """Scenario model"""
     scenario_id: str = Field(..., description="Scenario ID")
     name: str = Field(..., description="Scenario name")
-    description: str = Field(..., description="Scenario description")
-    precondition: str = Field(..., description="Precondition")
-    expected_result: str = Field(..., description="Expected result")
-    priority: str = Field(..., description="Priority (P0/P1/P2/P3)")
-    category: str = Field(..., description="Category (normal/exception/boundary/performance/security)")
+    description: str = Field(default="", description="Scenario description")
+    precondition: str = Field(default="", description="Precondition")
+    expected_result: str = Field(default="", description="Expected result")
+    priority: str = Field(default="P2", description="Priority (P0/P1/P2/P3)")
+    category: str = Field(default="normal", description="Category (normal/exception/boundary/performance/security)")
+    
+    class Config:
+        extra = "allow"  # 允许额外字段
 
 
 class ScenarioGenerationResponse(BaseModel):
@@ -62,20 +71,26 @@ class TestStep(BaseModel):
     step_no: int = Field(..., description="Step number")
     action: str = Field(..., description="Action to perform")
     data: Union[str, Dict[str, Any], None] = Field(default="", description="Test data (string, dict, or empty)")
-    expected: str = Field(..., description="Expected result")
+    expected: str = Field(default="", description="Expected result")
+    
+    class Config:
+        extra = "allow"  # 允许额外字段
 
 
 class TestCase(BaseModel):
     """Test case model"""
     case_id: str = Field(..., description="Test case ID")
     title: str = Field(..., description="Test case title")
-    test_type: str = Field(..., description="Test type")
-    priority: str = Field(..., description="Priority")
-    precondition: str = Field(..., description="Precondition")
-    steps: List[TestStep] = Field(..., description="Test steps")
-    test_data: Dict[str, Any] = Field(..., description="Test data")
-    expected_result: str = Field(..., description="Expected result")
-    postcondition: str = Field(..., description="Postcondition")
+    test_type: str = Field(default="", description="Test type")
+    priority: str = Field(default="", description="Priority")
+    precondition: str = Field(default="", description="Precondition")
+    steps: List[TestStep] = Field(default_factory=list, description="Test steps")
+    test_data: Dict[str, Any] = Field(default_factory=dict, description="Test data")
+    expected_result: str = Field(default="", description="Expected result")
+    postcondition: str = Field(default="", description="Postcondition")
+    
+    class Config:
+        extra = "allow"  # 允许额外字段
 
 
 class CaseGenerationRequest(BaseModel):
@@ -84,6 +99,9 @@ class CaseGenerationRequest(BaseModel):
     scenarios: List[Scenario] = Field(..., description="List of scenarios")
     template_id: Optional[int] = Field(None, description="Template ID")
     script_ids: Optional[List[int]] = Field(None, description="Script IDs to use")
+    
+    class Config:
+        extra = "allow"  # 允许额外字段
 
 
 class CaseGenerationResponse(BaseModel):
@@ -98,6 +116,9 @@ class CodeGenerationRequest(BaseModel):
     test_cases: List[TestCase] = Field(..., description="List of test cases")
     tech_stack: Optional[str] = Field(None, description="Custom tech stack description")
     use_default_stack: bool = Field(True, description="Use default tech stack")
+    
+    class Config:
+        extra = "allow"  # 允许额外字段
 
 
 class CodeGenerationResponse(BaseModel):
@@ -113,6 +134,9 @@ class QualityAnalysisRequest(BaseModel):
     scenarios: List[Scenario] = Field(..., description="List of scenarios")
     test_cases: List[TestCase] = Field(..., description="List of test cases")
     defect_kb_ids: Optional[List[int]] = Field(None, description="Defect knowledge base IDs")
+    
+    class Config:
+        extra = "allow"  # 允许额外字段
 
 
 class CoverageAnalysis(BaseModel):
@@ -150,6 +174,9 @@ class OptimizeRequest(BaseModel):
     session_id: str = Field(..., description="Session ID")
     selected_cases: List[TestCase] = Field(..., description="Selected test cases")
     instruction: str = Field(..., description="Optimization instruction")
+    
+    class Config:
+        extra = "allow"  # 允许额外字段
 
 
 class OptimizeResponse(BaseModel):
@@ -163,6 +190,9 @@ class SupplementRequest(BaseModel):
     session_id: str = Field(..., description="Session ID")
     existing_cases: List[TestCase] = Field(..., description="Existing test cases")
     requirement: str = Field(..., description="Requirement description")
+    
+    class Config:
+        extra = "allow"  # 允许额外字段
 
 
 class SupplementResponse(BaseModel):

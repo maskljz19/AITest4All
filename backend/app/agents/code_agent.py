@@ -224,31 +224,68 @@ class CodeAgent(BaseAgent):
         """
         # Clean response - remove markdown code blocks if present
         response = response.strip()
+        
+        # Remove markdown code blocks
         if response.startswith("```json"):
             response = response[7:]
-        if response.startswith("```"):
+        elif response.startswith("```"):
             response = response[3:]
+        
         if response.endswith("```"):
             response = response[:-3]
+        
         response = response.strip()
+        
+        # Try to find JSON object in response
+        # Sometimes LLM adds text before or after JSON
+        json_match = re.search(r'\{[\s\S]*\}', response)
+        if json_match:
+            response = json_match.group(0)
         
         try:
             result = json.loads(response)
             
-            if "files" not in result:
-                raise ValueError("Response must contain 'files' key")
+            # Handle different response formats
+            if "files" in result:
+                files = result["files"]
+            elif isinstance(result, dict) and all(isinstance(v, str) for v in result.values()):
+                # Response is already in files format
+                files = result
+                result = {"files": files}
+            else:
+                raise ValueError("Response must contain 'files' key or be a dict of filename -> content")
             
-            if not isinstance(result["files"], dict):
+            if not isinstance(files, dict):
                 raise ValueError("'files' must be a dictionary")
             
             # Ensure at least one file
-            if not result["files"]:
+            if not files:
                 raise ValueError("No files generated")
             
             return result
         
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse JSON response: {str(e)}\nResponse: {response}")
+            # Try to fix common JSON errors
+            try:
+                # Fix trailing commas
+                fixed_response = re.sub(r',(\s*[}\]])', r'\1', response)
+                # Fix unescaped quotes in strings
+                # This is a simplified fix - may not work for all cases
+                result = json.loads(fixed_response)
+                
+                if "files" in result:
+                    return result
+                elif isinstance(result, dict):
+                    return {"files": result}
+                else:
+                    raise ValueError("Invalid response format")
+                    
+            except:
+                # If all fixes fail, provide detailed error
+                error_msg = f"Failed to parse JSON response: {str(e)}"
+                # Show first 500 chars of response for debugging
+                preview = response[:500] + "..." if len(response) > 500 else response
+                raise ValueError(f"{error_msg}\n\nResponse preview:\n{preview}")
     
     async def generate_code(
         self,
@@ -365,7 +402,7 @@ class CodeAgent(BaseAgent):
             stream_callback: Optional callback for streaming chunks
             
         Returns:
-            Dict mapping filename to code content
+            Dict with 'files' key containing filename -> code mapping
         """
         # Build prompt
         prompt = self.build_prompt(

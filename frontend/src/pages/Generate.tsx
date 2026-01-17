@@ -253,7 +253,11 @@ const Generate: React.FC = () => {
     } else if (currentStep === 2) {
       handleGenerateCases()
     } else if (currentStep === 3) {
-      handleAnalyzeQuality()
+      // 用例生成后，可以选择质量分析或直接导出
+      setCurrentStep(currentStep + 1)
+    } else if (currentStep === 4) {
+      // 质量分析后，可以生成代码
+      setCurrentStep(currentStep + 1)
     } else {
       setCurrentStep(currentStep + 1)
     }
@@ -261,6 +265,11 @@ const Generate: React.FC = () => {
 
   const handlePrev = () => {
     setCurrentStep(currentStep - 1)
+  }
+
+  const handleJumpToExport = () => {
+    // 从用例生成步骤直接跳转到导出
+    setCurrentStep(6)
   }
 
   const handleReset = () => {
@@ -273,8 +282,8 @@ const Generate: React.FC = () => {
     { title: '需求分析', description: '分析需求并提取关键信息' },
     { title: '场景生成', description: '生成测试场景' },
     { title: '用例生成', description: '生成详细测试用例' },
+    { title: '质量分析', description: '分析用例质量' },
     { title: '代码生成', description: '生成自动化测试代码' },
-    { title: '质量报告', description: '分析用例质量' },
     { title: '导出', description: '导出测试用例和代码' },
   ]
 
@@ -365,27 +374,42 @@ const Generate: React.FC = () => {
                 <Button
                   type="primary"
                   size="large"
-                  onClick={() => handleGenerateCode(true)}
-                  loading={isLoading}
-                  disabled={selectedCases.length === 0}
+                  onClick={handleJumpToExport}
+                  disabled={testCases.length === 0}
                 >
-                  生成代码
+                  直接导出
                 </Button>
               </Space>
             </div>
           </>
         )}
 
-        {currentStep === 4 && (
+        {currentStep === 4 && qualityReport && (
+          <>
+            <QualityReport report={qualityReport} />
+            <div style={{ marginTop: 24, textAlign: 'center' }}>
+              <Button
+                type="primary"
+                size="large"
+                onClick={() => handleGenerateCode(true)}
+                loading={isLoading}
+              >
+                生成代码
+              </Button>
+            </div>
+          </>
+        )}
+
+        {currentStep === 5 && (
           <CodeGeneration
             codeFiles={codeFiles}
             onGenerate={handleGenerateCode}
             onUpdate={handleCodeUpdate}
             loading={isLoading}
+            sessionId={sessionId || undefined}
+            testCases={testCases}
           />
         )}
-
-        {currentStep === 5 && <QualityReport report={qualityReport} />}
 
         {currentStep === 6 && (
           <ExportPanel
@@ -406,9 +430,9 @@ const Generate: React.FC = () => {
               上一步
             </Button>
           )}
-          {currentStep < 6 && currentStep > 0 && (
+          {currentStep < 6 && currentStep > 0 && currentStep !== 3 && currentStep !== 4 && (
             <Button type="primary" onClick={handleNext} loading={isLoading}>
-              {currentStep === 1 ? '生成场景' : currentStep === 2 ? '生成用例' : currentStep === 3 ? '质量分析' : '下一步'}
+              {currentStep === 1 ? '生成场景' : currentStep === 2 ? '生成用例' : '下一步'}
             </Button>
           )}
         </Space>
