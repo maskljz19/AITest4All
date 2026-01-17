@@ -83,14 +83,14 @@ const SettingsPage: React.FC = () => {
         quality: null,
       }
 
-      const configs = Array.isArray(configsRes.data.data) ? configsRes.data.data : []
+      const configs = Array.isArray((configsRes.data as any).data) ? (configsRes.data as any).data : []
       configs.forEach((config: AgentConfig) => {
         configsMap[config.agent_type] = config
       })
 
       setAgentConfigs(configsMap)
-      setKnowledgeBases(Array.isArray(kbRes.data.data) ? kbRes.data.data : [])
-      setScripts(Array.isArray(scriptsRes.data.data) ? scriptsRes.data.data : [])
+      setKnowledgeBases(Array.isArray((kbRes.data as any).data) ? (kbRes.data as any).data : [])
+      setScripts(Array.isArray((scriptsRes.data as any).data) ? (scriptsRes.data as any).data : [])
 
       // 加载当前Agent配置到表单
       if (configsMap[activeAgent]) {
@@ -167,7 +167,7 @@ const SettingsPage: React.FC = () => {
       // 更新本地状态
       setAgentConfigs({
         ...agentConfigs,
-        [activeAgent]: response.data.data,
+        [activeAgent]: (response.data as any).data,
       })
 
       message.success('保存成功')
@@ -188,11 +188,11 @@ const SettingsPage: React.FC = () => {
       // 更新本地状态
       setAgentConfigs({
         ...agentConfigs,
-        [activeAgent]: response.data.data,
+        [activeAgent]: (response.data as any).data,
       })
 
       // 重新加载到表单
-      loadConfigToForm(response.data.data)
+      loadConfigToForm((response.data as any).data)
       message.success('已恢复默认配置')
     } catch (error: any) {
       message.error(error.response?.data?.message || '恢复默认配置失败')
