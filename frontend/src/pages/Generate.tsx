@@ -343,7 +343,7 @@ const Generate: React.FC = () => {
                 <Button
                   type="default"
                   size="large"
-                  onClick={handleQualityAnalysis}
+                  onClick={handleAnalyzeQuality}
                   loading={isLoading}
                 >
                   质量分析
@@ -351,7 +351,7 @@ const Generate: React.FC = () => {
                 <Button
                   type="primary"
                   size="large"
-                  onClick={handleGenerateCode}
+                  onClick={() => handleGenerateCode(true)}
                   loading={isLoading}
                   disabled={selectedCases.length === 0}
                 >
