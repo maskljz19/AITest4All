@@ -70,8 +70,8 @@ export const generateApi = {
     if (data.session_id) {
       formData.append('session_id', data.session_id)
     }
-    if (data.knowledge_base_ids) {
-      formData.append('knowledge_base_ids', JSON.stringify(data.knowledge_base_ids))
+    if (data.knowledge_base_ids && data.knowledge_base_ids.length > 0) {
+      formData.append('knowledge_base_ids', data.knowledge_base_ids.join(','))
     }
 
     return apiClient.post('/v1/generate/requirement', formData, {
