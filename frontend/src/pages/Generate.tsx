@@ -284,34 +284,82 @@ const Generate: React.FC = () => {
         )}
 
         {currentStep === 1 && requirementAnalysis && (
-          <RequirementAnalysisResult
-            data={requirementAnalysis}
-            onUpdate={handleRequirementUpdate}
-            onReanalyze={handleReanalyze}
-            loading={isLoading}
-          />
+          <>
+            <RequirementAnalysisResult
+              data={requirementAnalysis}
+              onUpdate={handleRequirementUpdate}
+              onReanalyze={handleReanalyze}
+              loading={isLoading}
+            />
+            <div style={{ marginTop: 24, textAlign: 'center' }}>
+              <Button
+                type="primary"
+                size="large"
+                onClick={handleGenerateScenarios}
+                loading={isLoading}
+              >
+                生成场景
+              </Button>
+            </div>
+          </>
         )}
 
         {currentStep === 2 && (
-          <ScenarioList
-            scenarios={scenarios}
-            selectedIds={selectedScenarios}
-            onSelectionChange={setSelectedScenarios}
-            onDelete={handleScenarioDelete}
-            onSupplement={handleScenarioSupplement}
-            loading={isLoading}
-          />
+          <>
+            <ScenarioList
+              scenarios={scenarios}
+              selectedIds={selectedScenarios}
+              onSelectionChange={setSelectedScenarios}
+              onDelete={handleScenarioDelete}
+              onSupplement={handleScenarioSupplement}
+              loading={isLoading}
+            />
+            <div style={{ marginTop: 24, textAlign: 'center' }}>
+              <Button
+                type="primary"
+                size="large"
+                onClick={handleGenerateCases}
+                loading={isLoading}
+                disabled={selectedScenarios.length === 0}
+              >
+                生成用例
+              </Button>
+            </div>
+          </>
         )}
 
         {currentStep === 3 && (
-          <TestCaseList
-            testCases={testCases}
-            selectedIds={selectedCases}
-            onSelectionChange={setSelectedCases}
-            onUpdate={handleCaseUpdate}
-            onOptimize={handleCaseOptimize}
-            loading={isLoading}
-          />
+          <>
+            <TestCaseList
+              testCases={testCases}
+              selectedIds={selectedCases}
+              onSelectionChange={setSelectedCases}
+              onUpdate={handleCaseUpdate}
+              onOptimize={handleCaseOptimize}
+              loading={isLoading}
+            />
+            <div style={{ marginTop: 24, textAlign: 'center' }}>
+              <Space size="large">
+                <Button
+                  type="default"
+                  size="large"
+                  onClick={handleQualityAnalysis}
+                  loading={isLoading}
+                >
+                  质量分析
+                </Button>
+                <Button
+                  type="primary"
+                  size="large"
+                  onClick={handleGenerateCode}
+                  loading={isLoading}
+                  disabled={selectedCases.length === 0}
+                >
+                  生成代码
+                </Button>
+              </Space>
+            </div>
+          </>
         )}
 
         {currentStep === 4 && (
