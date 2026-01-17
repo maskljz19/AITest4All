@@ -3,6 +3,7 @@
 import uuid
 import logging
 from typing import Optional
+from datetime import datetime
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from fastapi.responses import JSONResponse
 
@@ -55,6 +56,29 @@ def get_document_parser() -> DocumentParser:
 async def get_knowledge_base_service(db: AsyncSession = Depends(get_db)) -> KnowledgeBaseService:
     """Get knowledge base service instance"""
     return KnowledgeBaseService(db)
+
+
+async def ensure_session_exists(session_id: str, session_manager: SessionManager) -> None:
+    """
+    Ensure session exists, create if not found.
+    For single-user scenarios, auto-create expired sessions.
+    
+    Args:
+        session_id: Session ID to check
+        session_manager: SessionManager instance
+    """
+    metadata = await session_manager.get_metadata(session_id)
+    if not metadata:
+        # Auto-create session for single-user scenario
+        metadata = {
+            'session_id': session_id,
+            'created_at': datetime.utcnow().isoformat(),
+            'last_accessed': datetime.utcnow().isoformat(),
+            'current_step': None,
+            'steps_completed': []
+        }
+        await session_manager.save_metadata(session_id, metadata)
+        logger.info(f"Auto-created session: {session_id}")
 
 
 @router.post(
@@ -221,16 +245,8 @@ async def generate_scenarios(
     Generate test scenarios based on requirement analysis
     """
     try:
-        # Verify session exists
-        metadata = await session_manager.get_metadata(request.session_id)
-        if not metadata:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error_code": "SESSION_EXPIRED",
-                    "message": "Session not found or expired",
-                }
-            )
+        # Ensure session exists (auto-create if needed)
+        await ensure_session_exists(request.session_id, session_manager)
         
         # Retrieve defect history from knowledge base
         defect_context = ""
@@ -309,16 +325,8 @@ async def generate_cases(
     Generate detailed test cases for each scenario
     """
     try:
-        # Verify session exists
-        metadata = await session_manager.get_metadata(request.session_id)
-        if not metadata:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error_code": "SESSION_EXPIRED",
-                    "message": "Session not found or expired",
-                }
-            )
+        # Ensure session exists (auto-create if needed)
+        await ensure_session_exists(request.session_id, session_manager)
         
         # Initialize case agent
         agent = await factory.create_case_agent_async()
@@ -382,16 +390,8 @@ async def generate_code(
     Generate automated test code based on test cases
     """
     try:
-        # Verify session exists
-        metadata = await session_manager.get_metadata(request.session_id)
-        if not metadata:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error_code": "SESSION_EXPIRED",
-                    "message": "Session not found or expired",
-                }
-            )
+        # Ensure session exists (auto-create if needed)
+        await ensure_session_exists(request.session_id, session_manager)
         
         # Initialize code agent
         agent = await factory.create_code_agent_async()
@@ -458,16 +458,8 @@ async def analyze_quality(
     Analyze test case quality and provide improvement suggestions
     """
     try:
-        # Verify session exists
-        metadata = await session_manager.get_metadata(request.session_id)
-        if not metadata:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error_code": "SESSION_EXPIRED",
-                    "message": "Session not found or expired",
-                }
-            )
+        # Ensure session exists (auto-create if needed)
+        await ensure_session_exists(request.session_id, session_manager)
         
         # Retrieve defect history from knowledge base
         defect_context = ""
@@ -547,16 +539,8 @@ async def optimize_cases(
     Optimize selected test cases based on user instruction
     """
     try:
-        # Verify session exists
-        metadata = await session_manager.get_metadata(request.session_id)
-        if not metadata:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error_code": "SESSION_EXPIRED",
-                    "message": "Session not found or expired",
-                }
-            )
+        # Ensure session exists (auto-create if needed)
+        await ensure_session_exists(request.session_id, session_manager)
         
         # Initialize optimize agent
         agent = await factory.create_optimize_agent_async()
@@ -625,16 +609,8 @@ async def supplement_cases(
     Supplement new test cases based on existing cases and requirements
     """
     try:
-        # Verify session exists
-        metadata = await session_manager.get_metadata(request.session_id)
-        if not metadata:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error_code": "SESSION_EXPIRED",
-                    "message": "Session not found or expired",
-                }
-            )
+        # Ensure session exists (auto-create if needed)
+        await ensure_session_exists(request.session_id, session_manager)
         
         # Initialize optimize agent (handles both optimize and supplement)
         agent = await factory.create_optimize_agent_async()

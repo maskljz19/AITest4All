@@ -205,7 +205,7 @@ async def handle_requirement_stream(session_id: str, data: Dict[str, Any], sessi
         await manager.send_progress(session_id, 40, "requirement", "analyzing")
         
         # Initialize agent with streaming callback
-        agent = factory.create_requirement_agent()
+        agent = await factory.create_requirement_agent_async()
         
         async def stream_callback(chunk: str):
             await manager.send_chunk(session_id, chunk, "requirement", "analyzing")
@@ -242,7 +242,7 @@ async def handle_scenario_stream(session_id: str, data: Dict[str, Any], session_
         await manager.send_progress(session_id, 30, "scenario", "generating")
         
         # Initialize agent
-        agent = factory.create_scenario_agent()
+        agent = await factory.create_scenario_agent_async()
         
         async def stream_callback(chunk: str):
             await manager.send_chunk(session_id, chunk, "scenario", "generating")
@@ -278,7 +278,7 @@ async def handle_case_stream(session_id: str, data: Dict[str, Any], session_mana
         await manager.send_progress(session_id, 30, "case", "generating")
         
         # Initialize agent
-        agent = factory.create_case_agent()
+        agent = await factory.create_case_agent_async()
         
         async def stream_callback(chunk: str):
             await manager.send_chunk(session_id, chunk, "case", "generating")
@@ -316,7 +316,7 @@ async def handle_code_stream(session_id: str, data: Dict[str, Any], session_mana
         await manager.send_progress(session_id, 30, "code", "generating")
         
         # Initialize agent
-        agent = factory.create_code_agent()
+        agent = await factory.create_code_agent_async()
         
         async def stream_callback(chunk: str):
             await manager.send_chunk(session_id, chunk, "code", "generating")
@@ -354,7 +354,7 @@ async def handle_quality_stream(session_id: str, data: Dict[str, Any], session_m
         await manager.send_progress(session_id, 30, "quality", "analyzing")
         
         # Initialize agent
-        agent = factory.create_quality_agent()
+        agent = await factory.create_quality_agent_async()
         
         async def stream_callback(chunk: str):
             await manager.send_chunk(session_id, chunk, "quality", "analyzing")
@@ -392,7 +392,7 @@ async def handle_optimize_stream(session_id: str, data: Dict[str, Any], session_
         await manager.send_progress(session_id, 30, "optimize", "optimizing")
         
         # Initialize agent
-        agent = factory.create_optimize_agent()
+        agent = await factory.create_optimize_agent_async()
         
         async def stream_callback(chunk: str):
             await manager.send_chunk(session_id, chunk, "optimize", "optimizing")
@@ -434,7 +434,7 @@ async def handle_supplement_stream(session_id: str, data: Dict[str, Any], sessio
         await manager.send_progress(session_id, 30, "supplement", "supplementing")
         
         # Initialize agent
-        agent = factory.create_optimize_agent()
+        agent = await factory.create_optimize_agent_async()
         
         async def stream_callback(chunk: str):
             await manager.send_chunk(session_id, chunk, "supplement", "supplementing")
