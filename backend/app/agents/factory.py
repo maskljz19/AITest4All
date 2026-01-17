@@ -12,7 +12,9 @@ from app.agents.optimize_agent import OptimizeAgent
 from app.core.config import settings
 from app.models.agent_config import AgentConfig
 from app.core.database import get_async_session
-import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 async def get_agent_config_from_db(agent_type: str) -> Optional[AgentConfig]:
@@ -32,37 +34,20 @@ async def get_agent_config_from_db(agent_type: str) -> Optional[AgentConfig]:
             config = result.scalar_one_or_none()
             return config
     except Exception as e:
-        import logging
-        logging.warning(f"Failed to load agent config from database: {e}")
+        logger.warning(f"Failed to load agent config from database for {agent_type}: {e}")
         return None
 
 
-def get_model_config_for_agent(agent_type: str) -> tuple[str, str, dict, str]:
+def get_model_config_from_settings(agent_type: str) -> tuple[str, str, dict, str]:
     """
-    Get model configuration for specific agent type from database or settings.
+    Get model configuration from settings (fallback).
     
     Args:
-        agent_type: Agent type (requirement/scenario/case/code/quality/optimize)
+        agent_type: Agent type
         
     Returns:
         Tuple of (provider, model_name, model_params, prompt_template)
     """
-    # Try to load from database first
-    try:
-        config = asyncio.run(get_agent_config_from_db(agent_type))
-        if config:
-            model_params = config.model_params or {}
-            return (
-                config.model_provider,
-                config.model_name,
-                model_params,
-                config.prompt_template
-            )
-    except Exception as e:
-        import logging
-        logging.warning(f"Failed to load config from database, using settings: {e}")
-    
-    # Fallback to settings
     agent_model_map = {
         "requirement": settings.requirement_agent_model,
         "scenario": settings.scenario_agent_model,
@@ -82,7 +67,7 @@ def get_model_config_for_agent(agent_type: str) -> tuple[str, str, dict, str]:
     return provider, model_name, model_params, ""
 
 
-def create_agent(
+async def create_agent_async(
     agent_type: str,
     model_provider: Optional[str] = None,
     model_name: Optional[str] = None,
@@ -90,7 +75,7 @@ def create_agent(
     max_tokens: Optional[int] = None
 ) -> BaseAgent:
     """
-    Create agent instance with configuration from database or settings.
+    Create agent instance with configuration from database or settings (async version).
     
     Args:
         agent_type: Agent type (requirement/scenario/case/code/quality/optimize)
@@ -105,8 +90,18 @@ def create_agent(
     Raises:
         ValueError: If agent type is invalid
     """
-    # Get configuration from database or settings
-    default_provider, default_model, default_params, prompt_template = get_model_config_for_agent(agent_type)
+    # Try to load from database first
+    config = await get_agent_config_from_db(agent_type)
+    
+    if config:
+        # Use database configuration
+        default_provider = config.model_provider
+        default_model = config.model_name
+        default_params = config.model_params or {}
+        prompt_template = config.prompt_template
+    else:
+        # Fallback to settings
+        default_provider, default_model, default_params, prompt_template = get_model_config_from_settings(agent_type)
     
     # Use provided values or defaults
     provider = model_provider or default_provider
@@ -146,31 +141,99 @@ def create_agent(
     return agent
 
 
+# Synchronous wrapper functions for backward compatibility
 def create_requirement_agent(**kwargs) -> RequirementAgent:
-    """Create requirement agent with configuration"""
-    return create_agent("requirement", **kwargs)
+    """Create requirement agent with configuration (uses settings as fallback)"""
+    provider, model, params, _ = get_model_config_from_settings("requirement")
+    return RequirementAgent(
+        model_provider=ModelProvider(kwargs.get("model_provider", provider)),
+        model_name=kwargs.get("model_name", model),
+        temperature=kwargs.get("temperature", params.get("temperature", settings.default_temperature)),
+        max_tokens=kwargs.get("max_tokens", params.get("max_tokens", settings.default_max_tokens))
+    )
 
 
 def create_scenario_agent(**kwargs) -> ScenarioAgent:
-    """Create scenario agent with configuration"""
-    return create_agent("scenario", **kwargs)
+    """Create scenario agent with configuration (uses settings as fallback)"""
+    provider, model, params, _ = get_model_config_from_settings("scenario")
+    return ScenarioAgent(
+        model_provider=ModelProvider(kwargs.get("model_provider", provider)),
+        model_name=kwargs.get("model_name", model),
+        temperature=kwargs.get("temperature", params.get("temperature", settings.default_temperature)),
+        max_tokens=kwargs.get("max_tokens", params.get("max_tokens", settings.default_max_tokens))
+    )
 
 
 def create_case_agent(**kwargs) -> CaseAgent:
-    """Create case agent with configuration"""
-    return create_agent("case", **kwargs)
+    """Create case agent with configuration (uses settings as fallback)"""
+    provider, model, params, _ = get_model_config_from_settings("case")
+    return CaseAgent(
+        model_provider=ModelProvider(kwargs.get("model_provider", provider)),
+        model_name=kwargs.get("model_name", model),
+        temperature=kwargs.get("temperature", params.get("temperature", settings.default_temperature)),
+        max_tokens=kwargs.get("max_tokens", params.get("max_tokens", settings.default_max_tokens))
+    )
 
 
 def create_code_agent(**kwargs) -> CodeAgent:
-    """Create code agent with configuration"""
-    return create_agent("code", **kwargs)
+    """Create code agent with configuration (uses settings as fallback)"""
+    provider, model, params, _ = get_model_config_from_settings("code")
+    return CodeAgent(
+        model_provider=ModelProvider(kwargs.get("model_provider", provider)),
+        model_name=kwargs.get("model_name", model),
+        temperature=kwargs.get("temperature", params.get("temperature", settings.default_temperature)),
+        max_tokens=kwargs.get("max_tokens", params.get("max_tokens", settings.default_max_tokens))
+    )
 
 
 def create_quality_agent(**kwargs) -> QualityAgent:
-    """Create quality agent with configuration"""
-    return create_agent("quality", **kwargs)
+    """Create quality agent with configuration (uses settings as fallback)"""
+    provider, model, params, _ = get_model_config_from_settings("quality")
+    return QualityAgent(
+        model_provider=ModelProvider(kwargs.get("model_provider", provider)),
+        model_name=kwargs.get("model_name", model),
+        temperature=kwargs.get("temperature", params.get("temperature", settings.default_temperature)),
+        max_tokens=kwargs.get("max_tokens", params.get("max_tokens", settings.default_max_tokens))
+    )
 
 
 def create_optimize_agent(**kwargs) -> OptimizeAgent:
-    """Create optimize agent with configuration"""
-    return create_agent("optimize", **kwargs)
+    """Create optimize agent with configuration (uses settings as fallback)"""
+    provider, model, params, _ = get_model_config_from_settings("optimize")
+    return OptimizeAgent(
+        model_provider=ModelProvider(kwargs.get("model_provider", provider)),
+        model_name=kwargs.get("model_name", model),
+        temperature=kwargs.get("temperature", params.get("temperature", settings.default_temperature)),
+        max_tokens=kwargs.get("max_tokens", params.get("max_tokens", settings.default_max_tokens))
+    )
+
+
+# Async versions that load from database
+async def create_requirement_agent_async(**kwargs) -> RequirementAgent:
+    """Create requirement agent with database configuration"""
+    return await create_agent_async("requirement", **kwargs)
+
+
+async def create_scenario_agent_async(**kwargs) -> ScenarioAgent:
+    """Create scenario agent with database configuration"""
+    return await create_agent_async("scenario", **kwargs)
+
+
+async def create_case_agent_async(**kwargs) -> CaseAgent:
+    """Create case agent with database configuration"""
+    return await create_agent_async("case", **kwargs)
+
+
+async def create_code_agent_async(**kwargs) -> CodeAgent:
+    """Create code agent with database configuration"""
+    return await create_agent_async("code", **kwargs)
+
+
+async def create_quality_agent_async(**kwargs) -> QualityAgent:
+    """Create quality agent with database configuration"""
+    return await create_agent_async("quality", **kwargs)
+
+
+async def create_optimize_agent_async(**kwargs) -> OptimizeAgent:
+    """Create optimize agent with database configuration"""
+    return await create_agent_async("optimize", **kwargs)

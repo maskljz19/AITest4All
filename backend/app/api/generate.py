@@ -158,7 +158,7 @@ async def analyze_requirement(
                 # Continue without knowledge base
         
         # Initialize requirement agent
-        agent = factory.create_requirement_agent()
+        agent = await factory.create_requirement_agent_async()
         
         # Analyze requirement
         try:
@@ -248,7 +248,7 @@ async def generate_scenarios(
                 logger.warning(f"Failed to retrieve defect history: {e}")
         
         # Initialize scenario agent
-        agent = factory.create_scenario_agent()
+        agent = await factory.create_scenario_agent_async()
         
         # Generate scenarios
         try:
@@ -321,7 +321,7 @@ async def generate_cases(
             )
         
         # Initialize case agent
-        agent = factory.create_case_agent()
+        agent = await factory.create_case_agent_async()
         
         # Generate test cases
         try:
@@ -394,7 +394,7 @@ async def generate_code(
             )
         
         # Initialize code agent
-        agent = factory.create_code_agent()
+        agent = await factory.create_code_agent_async()
         
         # Generate code
         try:
@@ -484,7 +484,7 @@ async def analyze_quality(
                 logger.warning(f"Failed to retrieve defect history: {e}")
         
         # Initialize quality agent
-        agent = factory.create_quality_agent()
+        agent = await factory.create_quality_agent_async()
         
         # Analyze quality
         try:
@@ -559,7 +559,7 @@ async def optimize_cases(
             )
         
         # Initialize optimize agent
-        agent = factory.create_optimize_agent()
+        agent = await factory.create_optimize_agent_async()
         
         # Optimize cases
         try:
@@ -637,7 +637,7 @@ async def supplement_cases(
             )
         
         # Initialize optimize agent (handles both optimize and supplement)
-        agent = factory.create_optimize_agent()
+        agent = await factory.create_optimize_agent_async()
         
         # Supplement cases
         try:
