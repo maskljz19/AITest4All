@@ -139,7 +139,7 @@ export function handleApiError(error: unknown): void {
   }
 
   // Log error details in development
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     console.error('API Error:', {
       status,
       errorCode,
