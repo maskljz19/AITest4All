@@ -61,7 +61,7 @@ class TestStep(BaseModel):
     """Test step model"""
     step_no: int = Field(..., description="Step number")
     action: str = Field(..., description="Action to perform")
-    data: Union[str, Dict[str, Any]] = Field(..., description="Test data (string or dict)")
+    data: Union[str, Dict[str, Any], None] = Field(default="", description="Test data (string, dict, or empty)")
     expected: str = Field(..., description="Expected result")
 
 

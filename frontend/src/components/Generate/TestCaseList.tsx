@@ -193,6 +193,11 @@ const TestCaseList: React.FC<TestCaseListProps> = ({
                         : JSON.stringify(step.data, null, 2)}
                     </div>
                   )}
+                  {!step.data && (
+                    <div>
+                      <strong>数据:</strong> <span style={{ color: '#999' }}>无</span>
+                    </div>
+                  )}
                   <div>
                     <strong>预期:</strong> {step.expected}
                   </div>
