@@ -1,6 +1,6 @@
 """Generation API Schemas"""
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from pydantic import BaseModel, Field
 from enum import Enum
 
@@ -61,7 +61,7 @@ class TestStep(BaseModel):
     """Test step model"""
     step_no: int = Field(..., description="Step number")
     action: str = Field(..., description="Action to perform")
-    data: str = Field(..., description="Test data")
+    data: Union[str, Dict[str, Any]] = Field(..., description="Test data (string or dict)")
     expected: str = Field(..., description="Expected result")
 
 

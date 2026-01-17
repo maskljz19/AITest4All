@@ -187,7 +187,10 @@ const TestCaseList: React.FC<TestCaseListProps> = ({
                   </div>
                   {step.data && (
                     <div>
-                      <strong>数据:</strong> {step.data}
+                      <strong>数据:</strong>{' '}
+                      {typeof step.data === 'string'
+                        ? step.data
+                        : JSON.stringify(step.data, null, 2)}
                     </div>
                   )}
                   <div>

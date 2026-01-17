@@ -38,7 +38,7 @@ export interface TestCase {
   steps: Array<{
     step_no: number
     action: string
-    data: string
+    data: string | Record<string, any>  // Support both string and object
     expected: string
   }>
   test_data: Record<string, any>
