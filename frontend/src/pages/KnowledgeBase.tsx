@@ -371,6 +371,29 @@ const KnowledgeBasePage: React.FC = () => {
             <Upload
               fileList={fileList}
               beforeUpload={(file) => {
+                // 支持的文件扩展名
+                const allowedExtensions = ['.doc', '.docx', '.pdf', '.md', '.txt', '.xls', '.xlsx']
+                const fileName = file.name.toLowerCase()
+                const isValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
+
+                // 支持的MIME类型
+                const allowedMimeTypes = [
+                  'application/pdf',
+                  'application/msword', // .doc
+                  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+                  'text/markdown',
+                  'text/plain',
+                  'application/vnd.ms-excel', // .xls
+                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+                ]
+                const isValidMimeType = allowedMimeTypes.includes(file.type)
+
+                // 检查文件扩展名或MIME类型
+                if (!isValidExtension && !isValidMimeType) {
+                  message.error('只支持 PDF、Word (.doc/.docx)、Markdown、TXT、Excel (.xls/.xlsx) 格式')
+                  return false
+                }
+
                 const isLt10M = file.size / 1024 / 1024 < 10
                 if (!isLt10M) {
                   message.error('文件大小不能超过10MB')
@@ -381,11 +404,12 @@ const KnowledgeBasePage: React.FC = () => {
               }}
               onRemove={() => setFileList([])}
               maxCount={1}
+              accept=".pdf,.doc,.docx,.md,.txt,.xls,.xlsx"
             >
               <Button icon={<UploadOutlined />}>选择文件</Button>
             </Upload>
             <div style={{ marginTop: 8, color: '#999', fontSize: 12 }}>
-              支持格式: Word, PDF, Markdown, Excel, TXT (最大10MB)
+              支持格式: Word (.doc/.docx)、PDF、Markdown、Excel (.xls/.xlsx)、TXT (最大10MB)
             </div>
           </Form.Item>
         </Form>

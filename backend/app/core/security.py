@@ -135,9 +135,11 @@ class FileSecurityValidator:
     
     # Allowed file extensions and their MIME types
     ALLOWED_EXTENSIONS = {
+        '.doc': ['application/msword'],
         '.docx': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
         '.pdf': ['application/pdf'],
         '.md': ['text/markdown', 'text/plain'],
+        '.xls': ['application/vnd.ms-excel'],
         '.xlsx': ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
         '.txt': ['text/plain'],
     }

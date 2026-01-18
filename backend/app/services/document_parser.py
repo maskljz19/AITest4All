@@ -1,7 +1,7 @@
 """Document Parser Service
 
 Parses various document formats and extracts text content.
-Supports: Word (.docx), PDF (.pdf), Markdown (.md), Excel (.xlsx), TXT (.txt), and URLs.
+Supports: Word (.doc/.docx), PDF (.pdf), Markdown (.md), Excel (.xls/.xlsx), TXT (.txt), and URLs.
 """
 
 import io
@@ -16,6 +16,14 @@ import openpyxl
 import requests
 from bs4 import BeautifulSoup
 
+# Optional import for old Excel format
+try:
+    import xlrd
+    XLRD_AVAILABLE = True
+except ImportError:
+    XLRD_AVAILABLE = False
+    logging.warning("xlrd not available. Old Excel format (.xls) support will be limited.")
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,7 +35,7 @@ class DocumentParseError(Exception):
 class DocumentParser:
     """Service for parsing various document formats"""
     
-    SUPPORTED_EXTENSIONS = {'.docx', '.pdf', '.md', '.xlsx', '.txt'}
+    SUPPORTED_EXTENSIONS = {'.doc', '.docx', '.pdf', '.md', '.xls', '.xlsx', '.txt'}
     REQUEST_TIMEOUT = 30  # seconds
     
     @classmethod
@@ -57,13 +65,13 @@ class DocumentParser:
             )
         
         try:
-            if extension == '.docx':
+            if extension in ['.doc', '.docx']:
                 return cls._parse_docx(file_path)
             elif extension == '.pdf':
                 return cls._parse_pdf(file_path)
             elif extension == '.md':
                 return cls._parse_markdown(file_path)
-            elif extension == '.xlsx':
+            elif extension in ['.xls', '.xlsx']:
                 return cls._parse_excel(file_path)
             elif extension == '.txt':
                 return cls._parse_txt(file_path)
@@ -130,13 +138,13 @@ class DocumentParser:
         file_type = file_type.lower().lstrip('.')
         
         try:
-            if file_type == 'docx':
+            if file_type in ['doc', 'docx']:
                 return cls._parse_docx_bytes(content)
             elif file_type == 'pdf':
                 return cls._parse_pdf_bytes(content)
             elif file_type == 'md' or file_type == 'markdown':
                 return cls._parse_markdown_text(content.decode('utf-8'))
-            elif file_type == 'xlsx':
+            elif file_type in ['xls', 'xlsx']:
                 return cls._parse_excel_bytes(content)
             elif file_type == 'txt':
                 return content.decode('utf-8')
@@ -150,32 +158,53 @@ class DocumentParser:
     
     @staticmethod
     def _parse_docx(file_path: str) -> str:
-        """Parse Word document"""
-        doc = docx.Document(file_path)
-        paragraphs = [para.text for para in doc.paragraphs if para.text.strip()]
+        """Parse Word document (.doc and .docx)
         
-        # Also extract text from tables
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    if cell.text.strip():
-                        paragraphs.append(cell.text)
-        
-        return '\n\n'.join(paragraphs)
+        Note: python-docx only supports .docx format.
+        For .doc files, it will attempt to read them, but may fail.
+        Consider using LibreOffice or other converters for .doc files.
+        """
+        try:
+            doc = docx.Document(file_path)
+            paragraphs = [para.text for para in doc.paragraphs if para.text.strip()]
+            
+            # Also extract text from tables
+            for table in doc.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        if cell.text.strip():
+                            paragraphs.append(cell.text)
+            
+            return '\n\n'.join(paragraphs)
+        except Exception as e:
+            logger.error(f"Failed to parse Word document: {str(e)}")
+            raise DocumentParseError(
+                f"Failed to parse Word document. "
+                f"Note: .doc format may not be fully supported. "
+                f"Please convert to .docx format for best results. Error: {str(e)}"
+            )
     
     @staticmethod
     def _parse_docx_bytes(content: bytes) -> str:
-        """Parse Word document from bytes"""
-        doc = docx.Document(io.BytesIO(content))
-        paragraphs = [para.text for para in doc.paragraphs if para.text.strip()]
-        
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    if cell.text.strip():
-                        paragraphs.append(cell.text)
-        
-        return '\n\n'.join(paragraphs)
+        """Parse Word document from bytes (.doc and .docx)"""
+        try:
+            doc = docx.Document(io.BytesIO(content))
+            paragraphs = [para.text for para in doc.paragraphs if para.text.strip()]
+            
+            for table in doc.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        if cell.text.strip():
+                            paragraphs.append(cell.text)
+            
+            return '\n\n'.join(paragraphs)
+        except Exception as e:
+            logger.error(f"Failed to parse Word document from bytes: {str(e)}")
+            raise DocumentParseError(
+                f"Failed to parse Word document. "
+                f"Note: .doc format may not be fully supported. "
+                f"Please convert to .docx format for best results. Error: {str(e)}"
+            )
     
     @staticmethod
     def _parse_pdf(file_path: str) -> str:
@@ -223,7 +252,20 @@ class DocumentParser:
     
     @staticmethod
     def _parse_excel(file_path: str) -> str:
-        """Parse Excel document"""
+        """Parse Excel document (.xls and .xlsx)"""
+        path = Path(file_path)
+        extension = path.suffix.lower()
+        
+        # Handle old .xls format
+        if extension == '.xls':
+            if not XLRD_AVAILABLE:
+                raise DocumentParseError(
+                    "xlrd library not available. Cannot parse .xls files. "
+                    "Please convert to .xlsx format or install xlrd."
+                )
+            return DocumentParser._parse_xls(file_path)
+        
+        # Handle new .xlsx format
         workbook = openpyxl.load_workbook(file_path, data_only=True)
         text_parts = []
         
@@ -241,23 +283,94 @@ class DocumentParser:
         return '\n'.join(text_parts)
     
     @staticmethod
-    def _parse_excel_bytes(content: bytes) -> str:
-        """Parse Excel document from bytes"""
-        workbook = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+    def _parse_xls(file_path: str) -> str:
+        """Parse old Excel format (.xls)"""
+        import xlrd
+        
+        workbook = xlrd.open_workbook(file_path)
         text_parts = []
         
-        for sheet_name in workbook.sheetnames:
-            sheet = workbook[sheet_name]
-            text_parts.append(f"Sheet: {sheet_name}")
+        for sheet in workbook.sheets():
+            text_parts.append(f"Sheet: {sheet.name}")
             
-            for row in sheet.iter_rows(values_only=True):
-                row_text = '\t'.join(str(cell) if cell is not None else '' for cell in row)
+            for row_idx in range(sheet.nrows):
+                row = sheet.row(row_idx)
+                row_text = '\t'.join(str(cell.value) if cell.value else '' for cell in row)
                 if row_text.strip():
                     text_parts.append(row_text)
             
-            text_parts.append('')
+            text_parts.append('')  # Empty line between sheets
         
         return '\n'.join(text_parts)
+    
+    @staticmethod
+    def _parse_excel_bytes(content: bytes) -> str:
+        """Parse Excel document from bytes (.xls and .xlsx)"""
+        # Try to detect format by checking file signature
+        # .xls files start with D0 CF 11 E0 (OLE2 format)
+        # .xlsx files start with 50 4B (ZIP format)
+        
+        if content[:2] == b'PK':  # ZIP format (.xlsx)
+            workbook = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+            text_parts = []
+            
+            for sheet_name in workbook.sheetnames:
+                sheet = workbook[sheet_name]
+                text_parts.append(f"Sheet: {sheet_name}")
+                
+                for row in sheet.iter_rows(values_only=True):
+                    row_text = '\t'.join(str(cell) if cell is not None else '' for cell in row)
+                    if row_text.strip():
+                        text_parts.append(row_text)
+                
+                text_parts.append('')
+            
+            return '\n'.join(text_parts)
+        
+        elif content[:8] == b'\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1':  # OLE2 format (.xls)
+            if not XLRD_AVAILABLE:
+                raise DocumentParseError(
+                    "xlrd library not available. Cannot parse .xls files. "
+                    "Please convert to .xlsx format or install xlrd."
+                )
+            
+            import xlrd
+            workbook = xlrd.open_workbook(file_contents=content)
+            text_parts = []
+            
+            for sheet in workbook.sheets():
+                text_parts.append(f"Sheet: {sheet.name}")
+                
+                for row_idx in range(sheet.nrows):
+                    row = sheet.row(row_idx)
+                    row_text = '\t'.join(str(cell.value) if cell.value else '' for cell in row)
+                    if row_text.strip():
+                        text_parts.append(row_text)
+                
+                text_parts.append('')
+            
+            return '\n'.join(text_parts)
+        
+        else:
+            # Default to trying .xlsx format
+            try:
+                workbook = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+                text_parts = []
+                
+                for sheet_name in workbook.sheetnames:
+                    sheet = workbook[sheet_name]
+                    text_parts.append(f"Sheet: {sheet_name}")
+                    
+                    for row in sheet.iter_rows(values_only=True):
+                        row_text = '\t'.join(str(cell) if cell is not None else '' for cell in row)
+                        if row_text.strip():
+                            text_parts.append(row_text)
+                    
+                    text_parts.append('')
+                
+                return '\n'.join(text_parts)
+            except Exception as e:
+                raise DocumentParseError(f"Failed to parse Excel file: {str(e)}")
     
     @staticmethod
     def _parse_txt(file_path: str) -> str:

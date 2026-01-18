@@ -75,15 +75,26 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
   }
 
   const beforeUpload = (file: File) => {
-    const isValidType =
-      file.type === 'application/pdf' ||
-      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-      file.type === 'text/markdown' ||
-      file.type === 'text/plain' ||
-      file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    // 支持的文件扩展名
+    const allowedExtensions = ['.doc', '.docx', '.pdf', '.md', '.txt', '.xls', '.xlsx']
+    const fileName = file.name.toLowerCase()
+    const isValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
 
-    if (!isValidType) {
-      message.error('只支持 PDF、Word、Markdown、TXT、Excel 格式')
+    // 支持的MIME类型
+    const allowedMimeTypes = [
+      'application/pdf',
+      'application/msword', // .doc
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'text/markdown',
+      'text/plain',
+      'application/vnd.ms-excel', // .xls
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+    ]
+    const isValidMimeType = allowedMimeTypes.includes(file.type)
+
+    // 检查文件扩展名或MIME类型（有些浏览器可能不正确识别MIME类型）
+    if (!isValidExtension && !isValidMimeType) {
+      message.error('只支持 PDF、Word (.doc/.docx)、Markdown、TXT、Excel (.xls/.xlsx) 格式')
       return false
     }
 
@@ -159,7 +170,7 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
               onChange={handleFileChange}
               beforeUpload={beforeUpload}
               maxCount={1}
-              accept=".pdf,.docx,.md,.txt,.xlsx"
+              accept=".pdf,.doc,.docx,.md,.txt,.xls,.xlsx"
               disabled={loading}
             >
               <Button icon={<UploadOutlined />} disabled={loading}>
@@ -167,7 +178,7 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
               </Button>
             </Upload>
             <div style={{ marginTop: 8, color: '#999', fontSize: 12 }}>
-              支持格式: PDF、Word、Markdown、TXT、Excel，文件大小不超过 10MB
+              支持格式: PDF、Word (.doc/.docx)、Markdown、TXT、Excel (.xls/.xlsx)，文件大小不超过 10MB
             </div>
           </Form.Item>
         )}
