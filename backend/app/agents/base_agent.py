@@ -30,8 +30,7 @@ class BaseAgent(ABC):
     Provides:
     - LLM API integration (OpenAI/Anthropic)
     - Streaming output support
-    - Automatic retry with exponential backoff
-    - Error handling
+    - Error handling with fallback model support
     - Tool integration
     - Execution tracking
     """
@@ -43,7 +42,6 @@ class BaseAgent(ABC):
         model_name: str = "gpt-4",
         temperature: float = 0.7,
         max_tokens: int = 2000,
-        max_retries: int = 3,
         tools: Optional[List[Any]] = None,
         fallback_model: Optional[str] = None
     ):
@@ -56,7 +54,6 @@ class BaseAgent(ABC):
             model_name: Model name (e.g., gpt-4, claude-3-opus)
             temperature: Sampling temperature (0-2)
             max_tokens: Maximum tokens to generate
-            max_retries: Maximum retry attempts on failure
             tools: List of tools available to this agent
             fallback_model: Optional fallback model name (e.g., gpt-3.5-turbo)
         """
@@ -65,7 +62,6 @@ class BaseAgent(ABC):
         self.model_name = model_name
         self.temperature = temperature
         self.max_tokens = max_tokens
-        self.max_retries = max_retries
         self.fallback_model = fallback_model
         
         # Tool integration
@@ -231,7 +227,7 @@ class BaseAgent(ABC):
         timeout: Optional[int] = None
     ) -> AsyncGenerator[str, None] | str:
         """
-        Call LLM with automatic retry and exponential backoff.
+        Call LLM with timeout and fallback model support.
         
         Args:
             prompt: User prompt
@@ -243,167 +239,130 @@ class BaseAgent(ABC):
             Response text or async generator for streaming
             
         Raises:
-            LLMAPIError: If all retries fail
+            LLMAPIError: If LLM call fails
+            TimeoutError: If LLM call times out
         """
         from app.core.exceptions import LLMAPIError, TimeoutError as AppTimeoutError
         
         timeout = timeout or 60  # Default 60 seconds
-        last_error = None
         original_model = self.model_name
         
-        for attempt in range(self.max_retries):
-            try:
-                # Wrap LLM call with timeout
-                if self.model_provider == ModelProvider.OPENAI:
-                    result = await asyncio.wait_for(
-                        self._call_openai(prompt, system_message, stream),
-                        timeout=timeout
-                    )
-                elif self.model_provider == ModelProvider.ANTHROPIC:
-                    result = await asyncio.wait_for(
-                        self._call_anthropic(prompt, system_message, stream),
-                        timeout=timeout
-                    )
-                else:
-                    raise NotImplementedError(f"Provider {self.model_provider} not supported")
-                
-                # Success - restore original model if we used fallback
-                if self.model_name != original_model:
+        try:
+            # Wrap LLM call with timeout
+            if self.model_provider == ModelProvider.OPENAI:
+                result = await asyncio.wait_for(
+                    self._call_openai(prompt, system_message, stream),
+                    timeout=timeout
+                )
+            elif self.model_provider == ModelProvider.ANTHROPIC:
+                result = await asyncio.wait_for(
+                    self._call_anthropic(prompt, system_message, stream),
+                    timeout=timeout
+                )
+            else:
+                raise NotImplementedError(f"Provider {self.model_provider} not supported")
+            
+            # Success - restore original model if we used fallback
+            if self.model_name != original_model:
+                self.model_name = original_model
+            
+            return result
+        
+        except asyncio.TimeoutError as e:
+            # Try fallback model if available
+            if self.fallback_model and self.model_name != self.fallback_model:
+                import logging
+                logging.warning(f"Primary model timed out. Trying fallback model: {self.fallback_model}")
+                self.model_name = self.fallback_model
+                try:
+                    result = await self._call_llm_with_retry(prompt, system_message, stream, timeout)
                     self.model_name = original_model
-                
-                return result
-            
-            except asyncio.TimeoutError as e:
-                last_error = e
-                error_msg = f"LLM API call timed out after {timeout}s (attempt {attempt + 1}/{self.max_retries})"
-                
-                if attempt < self.max_retries - 1:
-                    # Exponential backoff: 1s, 2s, 4s
-                    wait_time = 2 ** attempt
-                    import logging
-                    logging.warning(f"{error_msg}. Retrying in {wait_time}s...")
-                    await asyncio.sleep(wait_time)
-                    continue
-                else:
-                    # Try fallback model if available
-                    if self.fallback_model and self.model_name != self.fallback_model:
-                        import logging
-                        logging.warning(f"Primary model failed. Trying fallback model: {self.fallback_model}")
-                        self.model_name = self.fallback_model
-                        try:
-                            result = await self._call_llm_with_retry(prompt, system_message, stream, timeout)
-                            self.model_name = original_model
-                            return result
-                        except Exception as fallback_error:
-                            self.model_name = original_model
-                            raise LLMAPIError(
-                                message=f"Both primary and fallback models failed",
-                                details={
-                                    "primary_model": original_model,
-                                    "fallback_model": self.fallback_model,
-                                    "primary_error": str(last_error),
-                                    "fallback_error": str(fallback_error)
-                                }
-                            )
-                    
-                    # All retries exhausted
-                    raise AppTimeoutError(
-                        message=f"LLM API call timed out after {self.max_retries} attempts",
-                        details={
-                            "timeout": timeout,
-                            "attempts": self.max_retries,
-                            "provider": self.model_provider,
-                            "model": original_model
-                        }
-                    )
-            
-            except (openai.APIError, openai.APIConnectionError, openai.RateLimitError) as e:
-                last_error = e
-                error_msg = f"OpenAI API error: {str(e)} (attempt {attempt + 1}/{self.max_retries})"
-                
-                if attempt < self.max_retries - 1:
-                    # Exponential backoff: 1s, 2s, 4s
-                    wait_time = 2 ** attempt
-                    import logging
-                    logging.warning(f"{error_msg}. Retrying in {wait_time}s...")
-                    await asyncio.sleep(wait_time)
-                    continue
-                else:
-                    # Try fallback model if available
-                    if self.fallback_model and self.model_name != self.fallback_model:
-                        import logging
-                        logging.warning(f"Primary model failed. Trying fallback model: {self.fallback_model}")
-                        self.model_name = self.fallback_model
-                        try:
-                            result = await self._call_llm_with_retry(prompt, system_message, stream, timeout)
-                            self.model_name = original_model
-                            return result
-                        except Exception as fallback_error:
-                            self.model_name = original_model
-                            raise LLMAPIError(
-                                message=f"Both primary and fallback models failed",
-                                details={
-                                    "primary_model": original_model,
-                                    "fallback_model": self.fallback_model,
-                                    "primary_error": str(last_error),
-                                    "fallback_error": str(fallback_error)
-                                }
-                            )
-                    
-                    # All retries exhausted
+                    return result
+                except Exception as fallback_error:
+                    self.model_name = original_model
                     raise LLMAPIError(
-                        message=f"OpenAI API call failed after {self.max_retries} attempts: {str(e)}",
+                        message=f"Both primary and fallback models failed",
                         details={
-                            "error_type": type(e).__name__,
-                            "attempts": self.max_retries,
-                            "provider": self.model_provider,
-                            "model": original_model
+                            "primary_model": original_model,
+                            "fallback_model": self.fallback_model,
+                            "primary_error": str(e),
+                            "fallback_error": str(fallback_error)
                         }
                     )
             
-            except Exception as e:
-                last_error = e
-                error_msg = f"LLM API error: {str(e)} (attempt {attempt + 1}/{self.max_retries})"
-                
-                if attempt < self.max_retries - 1:
-                    # Exponential backoff: 1s, 2s, 4s
-                    wait_time = 2 ** attempt
-                    import logging
-                    logging.warning(f"{error_msg}. Retrying in {wait_time}s...")
-                    await asyncio.sleep(wait_time)
-                    continue
-                else:
-                    # Try fallback model if available
-                    if self.fallback_model and self.model_name != self.fallback_model:
-                        import logging
-                        logging.warning(f"Primary model failed. Trying fallback model: {self.fallback_model}")
-                        self.model_name = self.fallback_model
-                        try:
-                            result = await self._call_llm_with_retry(prompt, system_message, stream, timeout)
-                            self.model_name = original_model
-                            return result
-                        except Exception as fallback_error:
-                            self.model_name = original_model
-                            raise LLMAPIError(
-                                message=f"Both primary and fallback models failed",
-                                details={
-                                    "primary_model": original_model,
-                                    "fallback_model": self.fallback_model,
-                                    "primary_error": str(last_error),
-                                    "fallback_error": str(fallback_error)
-                                }
-                            )
-                    
-                    # All retries exhausted
+            # No fallback available
+            raise AppTimeoutError(
+                message=f"LLM API call timed out after {timeout}s",
+                details={
+                    "timeout": timeout,
+                    "provider": self.model_provider,
+                    "model": original_model
+                }
+            )
+        
+        except (openai.APIError, openai.APIConnectionError, openai.RateLimitError) as e:
+            # Try fallback model if available
+            if self.fallback_model and self.model_name != self.fallback_model:
+                import logging
+                logging.warning(f"Primary model failed. Trying fallback model: {self.fallback_model}")
+                self.model_name = self.fallback_model
+                try:
+                    result = await self._call_llm_with_retry(prompt, system_message, stream, timeout)
+                    self.model_name = original_model
+                    return result
+                except Exception as fallback_error:
+                    self.model_name = original_model
                     raise LLMAPIError(
-                        message=f"LLM API call failed after {self.max_retries} attempts: {str(e)}",
+                        message=f"Both primary and fallback models failed",
                         details={
-                            "error_type": type(e).__name__,
-                            "attempts": self.max_retries,
-                            "provider": self.model_provider,
-                            "model": original_model
+                            "primary_model": original_model,
+                            "fallback_model": self.fallback_model,
+                            "primary_error": str(e),
+                            "fallback_error": str(fallback_error)
                         }
                     )
+            
+            # No fallback available
+            raise LLMAPIError(
+                message=f"OpenAI API call failed: {str(e)}",
+                details={
+                    "error_type": type(e).__name__,
+                    "provider": self.model_provider,
+                    "model": original_model
+                }
+            )
+        
+        except Exception as e:
+            # Try fallback model if available
+            if self.fallback_model and self.model_name != self.fallback_model:
+                import logging
+                logging.warning(f"Primary model failed. Trying fallback model: {self.fallback_model}")
+                self.model_name = self.fallback_model
+                try:
+                    result = await self._call_llm_with_retry(prompt, system_message, stream, timeout)
+                    self.model_name = original_model
+                    return result
+                except Exception as fallback_error:
+                    self.model_name = original_model
+                    raise LLMAPIError(
+                        message=f"Both primary and fallback models failed",
+                        details={
+                            "primary_model": original_model,
+                            "fallback_model": self.fallback_model,
+                            "primary_error": str(e),
+                            "fallback_error": str(fallback_error)
+                        }
+                    )
+            
+            # No fallback available
+            raise LLMAPIError(
+                message=f"LLM API call failed: {str(e)}",
+                details={
+                    "error_type": type(e).__name__,
+                    "provider": self.model_provider,
+                    "model": original_model
+                }
+            )
     
     async def _create_execution_record(self, session_id: Optional[str], input_data: Dict[str, Any]):
         """Create execution record
