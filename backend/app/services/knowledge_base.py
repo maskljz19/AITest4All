@@ -99,7 +99,7 @@ class KnowledgeBaseService:
                 storage_type='local',
                 file_path=str(file_path),
                 content=content,
-                metadata=metadata or {}
+                meta_data=metadata or {}
             )
             
             self.db.add(kb)
@@ -152,7 +152,7 @@ class KnowledgeBaseService:
                 storage_type='url',
                 url=url,
                 content=content,
-                metadata=metadata or {}
+                meta_data=metadata or {}
             )
             
             self.db.add(kb)
@@ -198,7 +198,7 @@ class KnowledgeBaseService:
                 KnowledgeBase.name,
                 KnowledgeBase.type,
                 KnowledgeBase.content,
-                KnowledgeBase.metadata,
+                KnowledgeBase.meta_data,
                 KnowledgeBase.created_at,
                 # Calculate relevance rank
                 func.ts_rank(
@@ -224,13 +224,15 @@ class KnowledgeBaseService:
             # Format results
             results = []
             for row in rows:
+                # Access meta_data field properly
+                metadata_value = row.meta_data if hasattr(row, 'meta_data') else {}
                 results.append({
                     'id': row.id,
                     'name': row.name,
                     'type': row.type,
                     'content': row.content[:500] + '...' if len(row.content) > 500 else row.content,
-                    'metadata': row.metadata,
-                    'created_at': row.created_at.isoformat(),
+                    'metadata': metadata_value,
+                    'created_at': row.created_at.isoformat() if row.created_at else None,
                     'relevance': float(row.rank)
                 })
             

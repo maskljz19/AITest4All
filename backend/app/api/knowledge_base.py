@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import os
 from datetime import datetime
 import json
+import logging
 
 from app.services.knowledge_base import KnowledgeBaseService
 from app.services.document_parser import DocumentParser
@@ -14,6 +15,7 @@ from app.core.database import get_db
 from app.core.security import FileSecurityValidator
 
 router = APIRouter(prefix="/api/v1/knowledge-base", tags=["knowledge-base"])
+logger = logging.getLogger(__name__)
 
 # Initialize document parser
 doc_parser = DocumentParser()
@@ -174,7 +176,7 @@ async def list_knowledge_bases(
         else:
             items = await kb_service.list_all(skip=offset, limit=limit)
         
-        # Format response
+        # Format response - use meta_data instead of metadata to avoid recursion
         data = []
         for item in items:
             data.append({
@@ -184,9 +186,9 @@ async def list_knowledge_bases(
                 "storage_type": item.storage_type,
                 "file_path": item.file_path,
                 "url": item.url,
-                "metadata": item.metadata,
-                "created_at": item.created_at.isoformat(),
-                "updated_at": item.updated_at.isoformat()
+                "metadata": item.meta_data if hasattr(item, 'meta_data') else {},
+                "created_at": item.created_at.isoformat() if item.created_at else None,
+                "updated_at": item.updated_at.isoformat() if item.updated_at else None
             })
         
         return {
@@ -196,6 +198,8 @@ async def list_knowledge_bases(
         }
         
     except Exception as e:
+        import traceback
+        logger.error(f"Failed to list knowledge bases: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to list knowledge bases: {str(e)}"
@@ -230,15 +234,17 @@ async def get_knowledge_base(kb_id: int, db: AsyncSession = Depends(get_db)):
                 "file_path": item.file_path,
                 "url": item.url,
                 "content": item.content,
-                "metadata": item.metadata,
-                "created_at": item.created_at.isoformat(),
-                "updated_at": item.updated_at.isoformat()
+                "metadata": item.meta_data if hasattr(item, 'meta_data') else {},
+                "created_at": item.created_at.isoformat() if item.created_at else None,
+                "updated_at": item.updated_at.isoformat() if item.updated_at else None
             }
         }
         
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        logger.error(f"Failed to get knowledge base: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get knowledge base: {str(e)}"
