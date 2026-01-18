@@ -124,7 +124,6 @@ class QualityAgent(BaseAgent):
 {
   "coverage_analysis": {
     "coverage_rate": 85,
-    "covered_points": ["已覆盖的功能点"],
     "uncovered_points": ["未覆盖的功能点"],
     "missing_scenarios": ["缺失的场景"]
   },
@@ -138,13 +137,10 @@ class QualityAgent(BaseAgent):
     ],
     "incomplete_data": ["TC007缺少测试数据"]
   },
-  "scenario_completeness": {
-    "missing_risk_scenarios": ["并发登录场景缺失"],
-    "defect_related_gaps": ["历史缺陷中的密码重置问题未覆盖"]
-  },
   "suggestions": [
     "建议补充并发登录的测试场景",
-    "TC003需要细化操作步骤"
+    "TC003需要细化操作步骤",
+    "建议补充历史缺陷中的密码重置问题测试"
   ],
   "quality_score": {
     "coverage_score": 85,
@@ -196,19 +192,29 @@ class QualityAgent(BaseAgent):
                 result["coverage_analysis"] = {}
             if "quality_analysis" not in result:
                 result["quality_analysis"] = {}
-            if "scenario_completeness" not in result:
-                result["scenario_completeness"] = {}
             if "suggestions" not in result:
                 result["suggestions"] = []
             if "quality_score" not in result:
                 result["quality_score"] = {}
             
+            # Remove scenario_completeness if present (not in response model)
+            if "scenario_completeness" in result:
+                # Merge scenario_completeness suggestions into main suggestions
+                sc = result.pop("scenario_completeness")
+                if "missing_risk_scenarios" in sc:
+                    for scenario in sc["missing_risk_scenarios"]:
+                        result["suggestions"].append(f"建议补充场景: {scenario}")
+                if "defect_related_gaps" in sc:
+                    for gap in sc["defect_related_gaps"]:
+                        result["suggestions"].append(f"历史缺陷相关: {gap}")
+            
             # Ensure coverage_analysis fields
             coverage = result["coverage_analysis"]
             if "coverage_rate" not in coverage:
                 coverage["coverage_rate"] = 0
-            if "covered_points" not in coverage:
-                coverage["covered_points"] = []
+            # Remove covered_points if present (not in response model)
+            if "covered_points" in coverage:
+                coverage.pop("covered_points")
             if "uncovered_points" not in coverage:
                 coverage["uncovered_points"] = []
             if "missing_scenarios" not in coverage:

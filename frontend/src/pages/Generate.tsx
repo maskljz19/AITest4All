@@ -207,7 +207,7 @@ const Generate: React.FC = () => {
       // Wrap it in the expected structure for the component
       const codeData = response.data.files ? { files: response.data.files } : response.data
       setCodeFiles(codeData)
-      setCurrentStep(4)
+      setCurrentStep(5)
       message.success('代码生成完成')
     } catch (error: any) {
       message.error(error.response?.data?.message || '代码生成失败')
@@ -230,18 +230,66 @@ const Generate: React.FC = () => {
 
     setIsLoading(true)
     try {
+      // Ensure scenarios have required fields with defaults
+      const formattedScenarios = scenarios.map(s => ({
+        scenario_id: s.scenario_id,
+        name: s.name,
+        description: s.description || '',
+        precondition: s.precondition || '',
+        expected_result: s.expected_result || '',
+        priority: s.priority || 'P2',
+        category: s.category || 'normal',
+      }))
+
+      // Ensure test cases have required fields with defaults
+      const formattedTestCases = testCases.map(tc => ({
+        case_id: tc.case_id,
+        title: tc.title,
+        test_type: tc.test_type || '',
+        priority: tc.priority || '',
+        precondition: tc.precondition || '',
+        steps: (tc.steps || []).map(step => ({
+          step_no: step.step_no,
+          action: step.action,
+          data: step.data || '',
+          expected: step.expected || '',
+        })),
+        test_data: tc.test_data || {},
+        expected_result: tc.expected_result || '',
+        postcondition: tc.postcondition || '',
+      }))
+
       const response = await generateApi.analyzeQuality({
         session_id: sessionId,
         requirement_analysis: requirementAnalysis,
-        scenarios,
-        test_cases: testCases,
+        scenarios: formattedScenarios,
+        test_cases: formattedTestCases,
       })
 
       setQualityReport(response.data)
-      setCurrentStep(5)
+      setCurrentStep(4)
       message.success('质量分析完成')
     } catch (error: any) {
-      message.error(error.response?.data?.message || '质量分析失败')
+      console.error('Quality analysis error:', error)
+      
+      // Handle different error formats
+      let errorMsg = '质量分析失败'
+      if (error.response?.data) {
+        const data = error.response.data
+        if (data.detail?.message) {
+          errorMsg = data.detail.message
+        } else if (data.message) {
+          errorMsg = data.message
+        } else if (data.detail?.errors) {
+          // Validation errors
+          const errors = data.detail.errors
+          errorMsg = `数据验证失败: ${errors.map((e: any) => `${e.loc.join('.')}: ${e.msg}`).join(', ')}`
+        } else if (typeof data.detail === 'string') {
+          errorMsg = data.detail
+        }
+      }
+      
+      message.error(errorMsg)
     } finally {
       setIsLoading(false)
     }

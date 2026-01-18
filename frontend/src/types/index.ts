@@ -54,7 +54,7 @@ export interface QualityReport {
   }
   quality_analysis: {
     duplicate_cases: string[]
-    non_smart_cases: string[]
+    non_smart_cases: Array<string | { case_id: string; issues: string[] }>
     incomplete_data: string[]
   }
   suggestions: string[]

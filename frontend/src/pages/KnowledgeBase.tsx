@@ -139,7 +139,7 @@ const KnowledgeBasePage: React.FC = () => {
     setLoading(true)
     try {
       const response = await knowledgeBaseApi.getDetail(record.id)
-      setSelectedKb(response.data)
+      setSelectedKb(response.data.data)
       setPreviewDrawerVisible(true)
     } catch (error: any) {
       message.error(error.response?.data?.message || '加载详情失败')

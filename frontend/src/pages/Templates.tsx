@@ -147,7 +147,7 @@ const TemplatesPage: React.FC = () => {
     setLoading(true)
     try {
       const response = await templatesApi.getDetail(record.id)
-      const template = response.data
+      const template = response.data.data || response.data
       setSelectedTemplate(template)
       setIsEditing(true)
       editForm.setFieldsValue({
@@ -179,7 +179,7 @@ const TemplatesPage: React.FC = () => {
     setLoading(true)
     try {
       const response = await templatesApi.getDetail(record.id)
-      const template = response.data
+      const template = response.data.data || response.data
       setSelectedTemplate(null)
       setIsEditing(false)
       editForm.setFieldsValue({
@@ -200,7 +200,7 @@ const TemplatesPage: React.FC = () => {
     setLoading(true)
     try {
       const response = await templatesApi.getDetail(record.id)
-      setSelectedTemplate(response.data)
+      setSelectedTemplate(response.data.data || response.data)
       setPreviewDrawerVisible(true)
     } catch (error: any) {
       message.error(error.response?.data?.message || '加载详情失败')

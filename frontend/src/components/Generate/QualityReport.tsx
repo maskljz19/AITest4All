@@ -250,7 +250,22 @@ const QualityReport: React.FC<QualityReportProps> = ({ report }) => {
             <List
               size="small"
               dataSource={report.quality_analysis.non_smart_cases}
-              renderItem={(item) => <List.Item>{item}</List.Item>}
+              renderItem={(item) => (
+                <List.Item>
+                  {typeof item === 'string' ? (
+                    item
+                  ) : (
+                    <div>
+                      <strong>{item.case_id}:</strong>
+                      <ul style={{ margin: '4px 0 0 20px', paddingLeft: 0 }}>
+                        {item.issues.map((issue, idx) => (
+                          <li key={idx}>{issue}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </List.Item>
+              )}
             />
           </div>
         )}
